@@ -76,7 +76,6 @@ for($k=0; $k<count($commands); ++$k)
   ProcessInput($command[0], $command[1], $command[2], $command[3], $command[4], $command[5], true);
 
   ProcessMacros();
-  CacheCombatResult();
 
   $defPlayer = $mainPlayer == 1 ? 2 : 1;
   DoGamestateUpdate();

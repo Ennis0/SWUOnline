@@ -57,8 +57,8 @@ fwrite($handler, "1\r\n"); //Current Player
 fwrite($handler, "1\r\n"); //Current Turn
 fwrite($handler, "M 1\r\n"); //What phase/player is active
 fwrite($handler, "1\r\n"); //Action points
-fwrite($handler, "\r\n"); //Combat Chain
-fwrite($handler, "\r\n"); //Combat Chain State
+fwrite($handler, "\r\n"); //unused
+fwrite($handler, "\r\n"); //Attack State
 fwrite($handler, "\r\n"); //Current Turn Effects
 fwrite($handler, "\r\n"); //Current Turn Effects From Combat
 fwrite($handler, "\r\n"); //Next Turn Effects
@@ -69,8 +69,8 @@ fwrite($handler, "\r\n"); //Layers
 fwrite($handler, "\r\n"); //Layer Priority
 fwrite($handler, "1\r\n"); //What player's turn it is
 fwrite($handler, "\r\n"); //Last Played Card
-fwrite($handler, "0\r\n"); //Number of prior chain links this turn
-fwrite($handler, "\r\n"); //Chain Link Summaries
+fwrite($handler, "\r\n"); //unused
+fwrite($handler, "\r\n"); //unused
 fwrite($handler, $p1Key . "\r\n"); //Player 1 auth key
 fwrite($handler, $p2Key . "\r\n"); //Player 2 auth key
 fwrite($handler, 0 . "\r\n"); //Permanent unique ID counter

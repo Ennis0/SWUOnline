@@ -96,7 +96,7 @@
 
   function CreatePopup($id, $fromArr, $canClose, $defaultState=0, $title="", $arrElements=1,$customInput="",$path="./", $big=false)
   {
-    global $combatChain, $darkMode;
+    global $darkMode;
     if($darkMode == null) $darkMode = false;
     $top = "50%"; $left = "20%"; $width = "60%"; $height = "40%";
     if($big) { $top = "5%"; $left = "5%";  $width = "80%"; $height = "90%"; }
@@ -256,7 +256,6 @@
       if($isPlayable || PlayableFromBanish($cardID)) return 4;
       return 0;
     }
-    if($isPlayable && ComboActive($cardID)) return 3;
     if($isPlayable && HasReprise($cardID) && RepriseActive()) return 3;
     else if($isPlayable) return 6;
     return 0;

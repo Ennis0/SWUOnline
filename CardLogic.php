@@ -102,16 +102,15 @@ function BottomDeckMultizone($player, $zone1, $zone2)
 
 function AddCurrentTurnEffectNextAttack($cardID, $player, $from = "", $uniqueID = -1)
 {
-  global $combatChain;
-  if(count($combatChain) > 0) AddCurrentTurnEffectFromCombat($cardID, $player, $uniqueID);
+  if(AttackIsOngoing()) AddCurrentTurnEffectFromCombat($cardID, $player, $uniqueID);
   else AddCurrentTurnEffect($cardID, $player, $from, $uniqueID);
 }
 
 function AddCurrentTurnEffect($cardID, $player, $from = "", $uniqueID = -1)
 {
-  global $currentTurnEffects, $combatChain;
+  global $currentTurnEffects;
   $card = explode("-", $cardID)[0];
-  if(CardType($card) == "A" && count($combatChain) > 0 && IsCombatEffectActive($cardID) && !IsCombatEffectPersistent($cardID) && $from != "PLAY") {
+  if(CardType($card) == "A" && AttackIsOngoing() && IsCombatEffectActive($cardID) && !IsCombatEffectPersistent($cardID) && $from != "PLAY") {
     AddCurrentTurnEffectFromCombat($cardID, $player, $uniqueID);
     return;
   }
@@ -120,9 +119,9 @@ function AddCurrentTurnEffect($cardID, $player, $from = "", $uniqueID = -1)
 
 function AddAfterResolveEffect($cardID, $player, $from = "", $uniqueID = -1)
 {
-  global $afterResolveEffects, $combatChain;
+  global $afterResolveEffects;
   $card = explode("-", $cardID)[0];
-  if(CardType($card) == "A" && count($combatChain) > 0 && !IsCombatEffectPersistent($cardID) && $from != "PLAY") {
+  if(CardType($card) == "A" && AttackIsOngoing() && !IsCombatEffectPersistent($cardID) && $from != "PLAY") {
     AddCurrentTurnEffectFromCombat($cardID, $player, $uniqueID);
     return;
   }
@@ -202,16 +201,11 @@ function AddNextTurnEffect($cardID, $player, $uniqueID = -1)
 
 function IsCombatEffectLimited($index)
 {
-  global $currentTurnEffects, $combatChain, $mainPlayer, $combatChainState, $CCS_WeaponIndex, $CCS_AttackUniqueID;
-  if(count($combatChain) == 0 || $currentTurnEffects[$index + 2] == -1) return false;
-  $attackSubType = CardSubType($combatChain[0]);
-  if(DelimStringContains($attackSubType, "Ally")) {
-    $allies = &GetAllies($mainPlayer);
-    if(count($allies) < $combatChainState[$CCS_WeaponIndex] + 5) return false;
-    if($allies[$combatChainState[$CCS_WeaponIndex] + 5] != $currentTurnEffects[$index + 2]) return true;
-  } else {
-    return $combatChainState[$CCS_AttackUniqueID] != $currentTurnEffects[$index + 2];
-  }
+  global $currentTurnEffects, $mainPlayer, $attackState, $AS_AttackerIndex, $AS_AttackerUniqueID;
+  if(!AttackIsOngoing() || $currentTurnEffects[$index + 2] == -1) return false;
+  $allies = &GetAllies($mainPlayer);
+  if(count($allies) < $attackState[$AS_AttackerIndex] + 5) return false;
+  if($allies[$attackState[$AS_AttackerIndex] + 5] != $currentTurnEffects[$index + 2]) return true;
   return false;
 }
 
@@ -315,7 +309,7 @@ function ProcessDecisionQueue()
 
 function CloseDecisionQueue()
 {
-  global $turn, $decisionQueue, $dqState, $combatChain, $currentPlayer, $mainPlayer;
+  global $turn, $decisionQueue, $dqState, $currentPlayer, $mainPlayer;
   $dqState[0] = "0";
   $turn[0] = $dqState[1];
   $turn[1] = $dqState[2];
@@ -326,7 +320,7 @@ function CloseDecisionQueue()
   $dqState[7] = "0"; //Target
   $dqState[8] = "-1"; //Orderable index (what layer after which triggers can be reordered)
   $decisionQueue = [];
-  if(($turn[0] == "D" || $turn[0] == "A") && count($combatChain) == 0) {
+  if(($turn[0] == "D" || $turn[0] == "A") && !AttackIsOngoing()) {
     $currentPlayer = $mainPlayer;
     $turn[0] = "M";
   }
@@ -351,7 +345,7 @@ function IsGamePhase($phase)
   switch ($phase) {
     case "RESUMEPAYING":
     case "RESUMEPLAY":
-    case "RESOLVECHAINLINK":
+    case "RESOLVEATTACK":
     case "RESOLVECOMBATDAMAGE":
     case "PASSTURN":
       return true;
@@ -395,7 +389,6 @@ function ContinueDecisionQueue($lastResult = "")
           $layerPriority[0] = 0;
         }
       }
-      global $combatChain;
       if($priorityHeld) {
         ContinueDecisionQueue("");
       } else {
@@ -423,10 +416,10 @@ function ContinueDecisionQueue($lastResult = "")
         else if($cardID == "ENDSTEP") FinishTurnPass();
         else if($cardID == "RESUMETURN") $turn[0] = "M";
         else if($cardID == "LAYER") ProcessLayer($player, $parameter);
-        else if($cardID == "FINALIZECHAINLINK") FinalizeChainLink($parameter);
+        else if($cardID == "FINALIZEATTACK") FinalizeAttack($parameter);
         else if($cardID == "DEFENDSTEP") { $turn[0] = "A"; $currentPlayer = $mainPlayer; }
         else if(IsAbilityLayer($cardID)) {
-          if(count($combatChain) > 0) {
+          if(AttackIsOngoing()) {
             AddAfterCombatLayer($cardID, $player, $parameter, $target, $additionalCosts, $uniqueID);
             ProcessDecisionQueue();
           } else {
@@ -494,9 +487,9 @@ function ContinueDecisionQueue($lastResult = "")
         BuildMyGamestate($currentPlayer);
       }
       PlayCard($params[0], $params[1], $lastResult, $params[2]);
-    } else if(count($decisionQueue) > 0 && $decisionQueue[0] == "RESOLVECHAINLINK") {
+    } else if(count($decisionQueue) > 0 && $decisionQueue[0] == "RESOLVEATTACK") {
       CloseDecisionQueue();
-      ResolveChainLink();
+      ResolveAttack();
     } else if(count($decisionQueue) > 0 && $decisionQueue[0] == "RESOLVECOMBATDAMAGE") {
       $parameter = $decisionQueue[2];
       if($parameter != "-") $damageDone = $parameter;
@@ -543,16 +536,16 @@ function ContinueDecisionQueue($lastResult = "")
 }
 
 function AddAfterCombatLayer($cardID, $player, $parameter, $target = "-", $additionalCosts = "-", $uniqueID = "-") {
-  global $combatChainState, $CCS_AfterLinkLayers;
-  if($combatChainState[$CCS_AfterLinkLayers] == "NA") $combatChainState[$CCS_AfterLinkLayers] = $cardID . "~" . $player . "~" . $parameter . "~" . $target . "~" . $additionalCosts . "~" . $uniqueID;
-  else $combatChainState[$CCS_AfterLinkLayers] .= "|" . $cardID . "~" . $player . "~" . $parameter . "~" . $target . "~" . $additionalCosts . "~" . $uniqueID;
+  global $attackState, $AS_AfterAttackLayers;
+  if($attackState[$AS_AfterAttackLayers] == "NA") $attackState[$AS_AfterAttackLayers] = $cardID . "~" . $player . "~" . $parameter . "~" . $target . "~" . $additionalCosts . "~" . $uniqueID;
+  else $attackState[$AS_AfterAttackLayers] .= "|" . $cardID . "~" . $player . "~" . $parameter . "~" . $target . "~" . $additionalCosts . "~" . $uniqueID;
 }
 
 function ProcessAfterCombatLayer() {
-  global $combatChainState, $CCS_AfterLinkLayers;
-  if($combatChainState[$CCS_AfterLinkLayers] == "NA") return;
-  $layers = explode("|", $combatChainState[$CCS_AfterLinkLayers]);
-  $combatChainState[$CCS_AfterLinkLayers] = "NA";
+  global $attackState, $AS_AfterAttackLayers;
+  if($attackState[$AS_AfterAttackLayers] == "NA") return;
+  $layers = explode("|", $attackState[$AS_AfterAttackLayers]);
+  $attackState[$AS_AfterAttackLayers] = "NA";
   for($i = 0; $i < count($layers); $i++) {
     $layer = explode("~", $layers[$i]);
     AddLayer($layer[0], $layer[1], $layer[2], $layer[3], $layer[4], $layer[5], append:true);
@@ -571,8 +564,8 @@ function ProcessLayer($player, $parameter)
 
 function ProcessTrigger($player, $parameter, $uniqueID, $additionalCosts, $target="-")
 {
-  global $combatChain, $CS_NumNonAttackCards, $CS_ArcaneDamageDealt, $CS_NumRedPlayed, $CS_DamageTaken, $EffectContext;
-  global $CID_BloodRotPox, $CID_Inertia, $CID_Frailty, $combatChainState, $CCS_IsAmbush;
+  global $CS_NumNonAttackCards, $CS_ArcaneDamageDealt, $CS_NumRedPlayed, $CS_DamageTaken, $EffectContext;
+  global $CID_BloodRotPox, $CID_Inertia, $CID_Frailty, $attackState, $AS_IsAmbush;
   $items = &GetItems($player);
   $character = &GetPlayerCharacter($player);
   $auras = &GetAuras($player);
@@ -584,7 +577,7 @@ function ProcessTrigger($player, $parameter, $uniqueID, $additionalCosts, $targe
       AddDecisionQueue("YESNO", $player, "if_you_want_to_resolve_the_ambush_attack");
       AddDecisionQueue("NOPASS", $player, "-");
       AddDecisionQueue("PASSPARAMETER", $player, 1, 1);
-      AddDecisionQueue("SETCOMBATCHAINSTATE", $player, $CCS_IsAmbush, 1);
+      AddDecisionQueue("SETATTACKSTATE", $player, $AS_IsAmbush, 1);
       AddDecisionQueue("PASSPARAMETER", $player, "MYALLY-" . $index, 1);
       AddDecisionQueue("MZOP", $player, "ATTACK", 1);
       break;
@@ -645,12 +638,12 @@ function GetDQHelpText()
 
 function FinalizeAction()
 {
-  global $currentPlayer, $mainPlayer, $actionPoints, $turn, $combatChain, $defPlayer, $makeBlockBackup, $mainPlayerGamestateStillBuilt;
+  global $currentPlayer, $mainPlayer, $actionPoints, $turn, $defPlayer, $makeBlockBackup, $mainPlayerGamestateStillBuilt;
   global $isPass, $inputMode;
   if(!$mainPlayerGamestateStillBuilt) UpdateGameState(1);
   BuildMainPlayerGamestate();
   if($turn[0] == "M") {
-    if(count($combatChain) > 0) //Means we initiated a chain link
+    if(AttackIsOngoing())
     {
       $turn[0] = "B";
       $currentPlayer = $defPlayer;
@@ -670,8 +663,6 @@ function FinalizeAction()
     $turn[0] = "A";
     $currentPlayer = $mainPlayer;
     $turn[2] = "";
-  } else if($turn[0] == "B") {
-    $turn[0] = "B";
   }
   return 0;
 }
@@ -784,27 +775,6 @@ function DestroyFrozenArsenal($player)
     if($arsenal[$i + 4] == "1") {
       DestroyArsenal($player);
     }
-  }
-}
-
-function CanGainAttack()
-{
-  global $combatChain, $mainPlayer;
-  if(SearchCurrentTurnEffects("OUT102", $mainPlayer)) return false;
-  return !SearchCurrentTurnEffects("CRU035", $mainPlayer) || CardType($combatChain[0]) != "AA";
-}
-
-function IsWeaponGreaterThanTwiceBasePower()
-{
-  global $combatChainState, $CCS_CachedTotalAttack, $combatChain;
-  return count($combatChain) > 0 && CardType($combatChain[0]) == "W" && CachedTotalAttack() > (AttackValue($combatChain[0]) * 2);
-}
-
-function HasEnergyCounters($array, $index)
-{
-  switch($array[$index]) {
-    case "WTR150": case "UPR166": return $array[$index+2] > 0;
-    default: return false;
   }
 }
 

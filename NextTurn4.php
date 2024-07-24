@@ -110,7 +110,7 @@
       }
 
       //Rotate is deprecated
-      function Card(cardNumber, folder, maxHeight, action = 0, showHover = 0, overlay = 0, borderColor = 0, counters = 0, actionDataOverride = "", id = "", rotate = 0, lifeCounters = 0, defCounters = 0, atkCounters = 0, controller = 0, restriction = "", isBroken = 0, onChain = 0, isFrozen = 0, gem = 0, landscape = 0, epicActionUsed = 0) {
+      function Card(cardNumber, folder, maxHeight, action = 0, showHover = 0, overlay = 0, borderColor = 0, counters = 0, actionDataOverride = "", id = "", rotate = 0, lifeCounters = 0, defCounters = 0, atkCounters = 0, controller = 0, restriction = "", isBroken = 0, isAttack = 0, isFrozen = 0, gem = 0, landscape = 0, epicActionUsed = 0) {
         if (folder == "crops") {
           cardNumber += "_cropped";
         }
@@ -120,7 +120,7 @@
         var LanguageJP = <?php echo ((IsLanguageJP($playerID) ? "true" : "false")); ?>;
         LanguageJP = LanguageJP && TranslationExist('JP', cardNumber);
 
-        if (cardNumber == "ENDSTEP" || cardNumber == "ENDTURN" || cardNumber == "RESUMETURN" || cardNumber == "PHANTASM" || cardNumber == "FINALIZECHAINLINK" || cardNumber == "DEFENDSTEP") {
+        if (cardNumber == "ENDSTEP" || cardNumber == "ENDTURN" || cardNumber == "RESUMETURN" || cardNumber == "PHANTASM" || cardNumber == "FINALIZEATTACK" || cardNumber == "DEFENDSTEP") {
           showHover = 0;
           borderColor = 0;
         } else if (folder == "concat" && LanguageJP) { // Japanese

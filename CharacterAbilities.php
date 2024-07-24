@@ -1,71 +1,5 @@
 <?php
 
-//0 - Card ID
-//1 - Status (2=ready, 1=unavailable, 0=destroyed)
-//2 - Num counters
-//3 - Num attack counters
-//4 - Num defense counters
-//5 - Num uses
-//6 - On chain (1 = yes, 0 = no)
-//7 - Flagged for destruction (1 = yes, 0 = no)
-//8 - Frozen (1 = yes, 0 = no)
-//9 - Is Active (2 = always active, 1 = yes, 0 = no)
-//10 - Position (0 = normal, 1 = distant)
-class Character
-{
-    // property declaration
-    public $cardID = "";
-    public $status = 2;
-    public $numCounters = 0;
-    public $numAttackCounters = 0;
-    public $numDefenseCounters = 0;
-    public $numUses = 0;
-    public $onChain = 0;
-    public $flaggedForDestruction = 0;
-    public $frozen = 0;
-    public $isActive = 2;
-    public $position = 0;
-
-    private $player = null;
-    private $arrIndex = -1;
-
-    public function __construct($player, $index)
-    {
-      $this->player = $player;
-      $this->arrIndex = $index;
-      $array = &GetPlayerCharacter($player);
-
-      $this->cardID = $array[$index];
-      $this->status = $array[$index+1];
-      $this->numCounters = $array[$index+2];
-      $this->numAttackCounters = $array[$index+3];
-      $this->numDefenseCounters = $array[$index+4];
-      $this->numUses = $array[$index+5];
-      $this->onChain = $array[$index+6];
-      $this->flaggedForDestruction = $array[$index+7];
-      $this->frozen = $array[$index+8];
-      $this->isActive = $array[$index+9];
-      $this->position = $array[$index+10];
-    }
-
-    public function Finished()
-    {
-      $array = &GetPlayerCharacter($this->player);
-      $array[$this->arrIndex] = $this->cardID;
-      $array[$this->arrIndex+1] = $this->status;
-      $array[$this->arrIndex+2] = $this->numCounters;
-      $array[$this->arrIndex+3] = $this->numAttackCounters;
-      $array[$this->arrIndex+4] = $this->numDefenseCounters;
-      $array[$this->arrIndex+5] = $this->numUses;
-      $array[$this->arrIndex+6] = $this->onChain;
-      $array[$this->arrIndex+7] = $this->flaggedForDestruction;
-      $array[$this->arrIndex+8] = $this->frozen;
-      $array[$this->arrIndex+9] = $this->isActive;
-      $array[$this->arrIndex+10] = $this->position;
-    }
-
-}
-
 function PutCharacterIntoPlayForPlayer($cardID, $player)
 {
   $char = &GetPlayerCharacter($player);
@@ -90,23 +24,6 @@ function CharacterCounters ($cardID)
     case "DYN492a": return 8;
     default: return 0;
   }
-}
-
-function CharacterTakeDamageAbility($player, $index, $damage, $preventable)
-{
-  $char = &GetPlayerCharacter($player);
-  $otherPlayer = $player == 1 ? 1 : 2;
-  $type = "-";//Add this if it ever matters
-  switch ($char[$index]) {
-
-    default:
-      break;
-  }
-  if ($remove == 1) {
-    DestroyCharacter($player, $index);
-  }
-  if ($damage <= 0) $damage = 0;
-  return $damage;
 }
 
 function CharacterStartTurnAbility($player)
@@ -177,58 +94,13 @@ function ResetCharacter($player) {
   }
 }
 
-function MainCharacterHitAbilities()
-{
-  global $combatChain, $combatChainState, $CCS_WeaponIndex, $mainPlayer;
-  $attackID = $combatChain[0];
-  $mainCharacter = &GetPlayerCharacter($mainPlayer);
-
-  for($i = 0; $i < count($mainCharacter); $i += CharacterPieces()) {
-    switch($characterID) {
-
-      default:
-        break;
-    }
-  }
-}
-
-function MainCharacterAttackModifiers($index = -1, $onlyBuffs = false)
-{
-  global $combatChainState, $CCS_WeaponIndex, $mainPlayer, $CS_NumAttacks, $combatChain;
-  $modifier = 0;
-  $mainCharacterEffects = &GetMainCharacterEffects($mainPlayer);
-  $mainCharacter = &GetPlayerCharacter($mainPlayer);
-  if($index == -1) $index = $combatChainState[$CCS_WeaponIndex];
-  for($i = 0; $i < count($mainCharacterEffects); $i += CharacterEffectPieces()) {
-    if($mainCharacterEffects[$i] == $index) {
-      switch($mainCharacterEffects[$i + 1]) {
-        case "QQaOgurnjX": $modifier += 2; break;//Imbue in Frost
-        case "usb5FgKvZX": $modifier += 1; break;//Sharpening Stone
-        case "CgyJxpEgzk": $modifier += 3; break;//Spirit Blade: Infusion
-        default:
-          break;
-      }
-    }
-  }
-  if($onlyBuffs) return $modifier;
-
-  $mainCharacter = &GetPlayerCharacter($mainPlayer);
-  for($i = 0; $i < count($mainCharacter); $i += CharacterPieces()) {
-    switch($mainCharacter[$i]) {
-      case "NfbZ0nouSQ": if(!IsAlly($combatChain[0])) $modifier += SearchCount(SearchBanish($mainPlayer,type:"WEAPON")); break;
-      default: break;
-    }
-  }
-  return $modifier;
-}
-
 function MainCharacterHitEffects()
 {
-  global $combatChainState, $CCS_WeaponIndex, $mainPlayer;
+  global $attackState, $AS_AttackerIndex, $mainPlayer;
   $modifier = 0;
   $mainCharacterEffects = &GetMainCharacterEffects($mainPlayer);
   for($i = 0; $i < count($mainCharacterEffects); $i += 2) {
-    if($mainCharacterEffects[$i] == $combatChainState[$CCS_WeaponIndex]) {
+    if($mainCharacterEffects[$i] == $attackState[$AS_AttackerIndex]) {
       switch($mainCharacterEffects[$i + 1]) {
         case "CgyJxpEgzk"://Spirit Blade: Infusion
           Draw($mainPlayer);
@@ -242,11 +114,11 @@ function MainCharacterHitEffects()
 
 function MainCharacterGrantsGoAgain()
 {
-  global $combatChainState, $CCS_WeaponIndex, $mainPlayer;
-  if($combatChainState[$CCS_WeaponIndex] == -1) return false;
+  global $attackState, $AS_AttackerIndex, $mainPlayer;
+  if($attackState[$AS_AttackerIndex] == -1) return false;
   $mainCharacterEffects = &GetMainCharacterEffects($mainPlayer);
   for($i = 0; $i < count($mainCharacterEffects); $i += 2) {
-    if($mainCharacterEffects[$i] == $combatChainState[$CCS_WeaponIndex]) {
+    if($mainCharacterEffects[$i] == $attackState[$AS_AttackerIndex]) {
       switch($mainCharacterEffects[$i + 1]) {
 
         default: break;

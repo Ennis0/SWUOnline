@@ -36,12 +36,6 @@ function SearchBanish($player, $type = "", $definedType = "", $maxCost = -1, $mi
   return SearchInner($banish, $player, "BANISH", BanishPieces(), $type, $definedType, $maxCost, $minCost, $aspect, $arena, $hasBountyOnly, $hasUpgradeOnly, $trait, $damagedOnly, $maxAttack, $maxHealth, $frozenOnly, $hasNegCounters, $hasEnergyCounters, $comboOnly, $minAttack, $keyword);
 }
 
-function SearchCombatChainLink($player, $type = "", $definedType = "", $maxCost = -1, $minCost = -1, $aspect = "", $arena = "", $hasBountyOnly = false, $hasUpgradeOnly = false, $trait = -1, $damagedOnly = false, $maxAttack = -1, $maxHealth = -1, $frozenOnly = false, $hasNegCounters = false, $hasEnergyCounters = false, $comboOnly = false, $minAttack = false, $keyword = false)
-{
-  global $combatChain;
-  return SearchInner($combatChain, $player, "CC", CombatChainPieces(), $type, $definedType, $maxCost, $minCost, $aspect, $arena, $hasBountyOnly, $hasUpgradeOnly, $trait, $damagedOnly, $maxAttack, $maxHealth, $frozenOnly, $hasNegCounters, $hasEnergyCounters, $comboOnly, $minAttack, $keyword);
-}
-
 function SearchResources($player, $type = "", $definedType = "", $maxCost = -1, $minCost = -1, $aspect = "", $arena = "", $hasBountyOnly = false, $hasUpgradeOnly = false, $trait = -1, $damagedOnly = false, $maxAttack = -1, $maxHealth = -1, $frozenOnly = false, $hasNegCounters = false, $hasEnergyCounters = false, $comboOnly = false, $minAttack = false, $keyword = false)
 {
   $arsenal = &GetMemory($player);
@@ -133,7 +127,6 @@ function SearchInner(&$array, $player, $zone, $count, $type, $definedType, $maxC
         }
         if($frozenOnly && !IsFrozenMZ($array, $zone, $i)) continue;
         if($hasNegCounters && $array[$i+4] == 0) continue;
-        if($hasEnergyCounters && !HasEnergyCounters($array, $i)) continue;
         if($comboOnly && !HasCombo($cardID)) continue;
         if($cardList != "") $cardList = $cardList . ",";
         $cardList = $cardList . $i;
@@ -146,7 +139,7 @@ function SearchInner(&$array, $player, $zone, $count, $type, $definedType, $maxC
 function isPriorityStep($cardID)
 {
   switch ($cardID) {
-    case "ENDTURN": case "RESUMETURN": case "PHANTASM": case "FINALIZECHAINLINK": case "DEFENDSTEP": case "ENDSTEP":
+    case "ENDTURN": case "RESUMETURN": case "PHANTASM": case "FINALIZEATTACK": case "DEFENDSTEP": case "ENDSTEP":
       return true;
     default: return false;
   }
@@ -487,18 +480,6 @@ function SearchItemsForCardMulti($playerID, $card1, $card2 = "", $card3 = "")
   return $cardList;
 }
 
-function SearchHighestAttackDefended()
-{
-  global $combatChain, $defPlayer;
-  $highest = 0;
-  for ($i = 0; $i < count($combatChain); $i += CombatChainPieces()) {
-    if ($combatChain[$i + 1] == $defPlayer) {
-      $av = AttackValue($combatChain[$i]);
-      if ($av > $highest) $highest = $av;
-    }
-  }
-  return $highest;
-}
 
 function SearchCharacterEffects($player, $index, $effect)
 {
@@ -528,19 +509,6 @@ function GetArsenalFaceUpIndices($player)
   $indices = "";
   for ($i = 0; $i < count($arsenal); $i += ArsenalPieces()) {
     if ($arsenal[$i + 1] == "UP") {
-      if ($indices != "") $indices .= ",";
-      $indices .= $i;
-    }
-  }
-  return $indices;
-}
-
-function GetEquipmentIndices($player, $maxBlock = -1, $onCombatChain = false)
-{
-  $character = &GetPlayerCharacter($player);
-  $indices = "";
-  for ($i = 0; $i < count($character); $i += CharacterPieces()) {
-    if ($character[$i + 1] != 0 && CardType($character[$i]) == "E" && ($maxBlock == -1 || (BlockValue($character[$i]) + $character[$i + 4]) <= $maxBlock) && ($onCombatChain == false || $character[$i + 6] > 0)) {
       if ($indices != "") $indices .= ",";
       $indices .= $i;
     }
@@ -703,16 +671,6 @@ function GetItemIndex($cardID, $player)
   return -1;
 }
 
-function GetCombatChainIndex($cardID, $player)
-{
-  global $combatChain;
-  for($i=0; $i<count($combatChain); $i+=CombatChainPieces())
-  {
-    if($combatChain[$i] == $cardID && $combatChain[$i+1] == $player) return $i;
-  }
-  return -1;
-}
-
 function GetAuraIndex($cardID, $player)
 {
   $auras = &GetAuras($player);
@@ -739,21 +697,6 @@ function CountItem($cardID, $player)
     if ($items[$i] == $cardID) ++$count;
   }
   return $count;
-}
-
-function SearchChainLinks($minPower = -1, $maxPower = -1, $cardType = "")
-{
-  global $chainLinks;
-  $links = "";
-  for ($i = 0; $i < count($chainLinks); ++$i) {
-    $power = AttackValue($chainLinks[$i][0]);
-    $type = CardType($chainLinks[$i][0]);
-    if ($chainLinks[$i][2] == "1" && ($minPower == -1 || $power >= $minPower) && ($maxPower == -1 || $power <= $maxPower) && ($cardType == "" || $type == $cardType)) {
-      if ($links != "") $links .= ",";
-      $links .= $i;
-    }
-  }
-  return $links;
 }
 
 function GetMZCardLink($player, $MZ)
@@ -972,9 +915,6 @@ function SearchMultizone($player, $searches)
           break;
         case "MYRESOURCES": case "THEIRRESOURCES":
           $searchResult = SearchResources($searchPlayer, $type, $definedType, $maxCost, $minCost, $aspect, $arena, $hasBountyOnly, $hasUpgradeOnly, $trait, $damagedOnly, $maxAttack, $maxHealth, $frozenOnly, $hasNegCounters, $hasEnergyCounters, $comboOnly, $minAttack, $keyword);
-          break;
-        case "COMBATCHAINLINK":
-          $searchResult = SearchCombatChainLink($searchPlayer, $type, $definedType, $maxCost, $minCost, $aspect, $arena, $hasBountyOnly, $hasUpgradeOnly, $trait, $damagedOnly, $maxAttack, $maxHealth, $frozenOnly, $hasNegCounters, $hasEnergyCounters, $comboOnly, $minAttack, $keyword);
           break;
         case "LAYER":
           $searchResult = SearchLayer($searchPlayer, $type, $definedType, $maxCost, $minCost, $aspect, $arena, $hasBountyOnly, $hasUpgradeOnly, $trait, $damagedOnly, $maxAttack, $maxHealth, $frozenOnly, $hasNegCounters, $hasEnergyCounters, $comboOnly, $minAttack, $keyword);

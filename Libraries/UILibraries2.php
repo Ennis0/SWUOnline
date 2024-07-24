@@ -45,13 +45,13 @@ function TextCounterColor($darkMode)
 //11 sType = card subtype
 //12 restriction = something preventing the card from being played (or "" if nothing)
 //13 isBroken = 1 if card is destroyed
-//14 onChain = 1 if card is on combat chain (mostly for equipment)
+//14 isAttack = 1 if card is being displayed as the visual representation of an attack
 //15 isFrozen = 1 if frozen
 //16 shows gem = (0, 1, 2) (0 off, 1 active, 2 inactive)
-function ClientRenderedCard($cardNumber, $action = 0, $overlay = 0, $borderColor = 0, $counters = 0, $actionDataOverride = "-", $lifeCounters = 0, $defCounters = 0, $atkCounters = 0, $controller = 0, $type = "", $sType = "", $restriction = "", $isBroken = 0, $onChain = 0, $isFrozen = 0, $gem = 0, $rotate = 0, $landscape = 0, $epicActionUsed = 0)
+function ClientRenderedCard($cardNumber, $action = 0, $overlay = 0, $borderColor = 0, $counters = 0, $actionDataOverride = "-", $lifeCounters = 0, $defCounters = 0, $atkCounters = 0, $controller = 0, $type = "", $sType = "", $restriction = "", $isBroken = 0, $isAttack = 0, $isFrozen = 0, $gem = 0, $rotate = 0, $landscape = 0, $epicActionUsed = 0)
 {
   $rv = $cardNumber . " " . $action . " " . $overlay . " " . $borderColor . " " . $counters . " " . $actionDataOverride . " " . $lifeCounters . " " . $defCounters . " " . $atkCounters . " ";
-  $rv .= $controller . " " . $type . " " . $sType . " " . $restriction . " " . $isBroken . " " . $onChain . " " . $isFrozen . " " . $gem . " " . $rotate . " " . $landscape . " " . $epicActionUsed;
+  $rv .= $controller . " " . $type . " " . $sType . " " . $restriction . " " . $isBroken . " " . $isAttack . " " . $isFrozen . " " . $gem . " " . $rotate . " " . $landscape . " " . $epicActionUsed;
   return $rv;
 }
 
@@ -70,7 +70,7 @@ function JSONRenderedCard(
   $sType = NULL,
   $restriction = NULL,
   $isBroken = NULL,
-  $onChain = NULL,
+  $isAttack = NULL,
   $isFrozen = NULL,
   $gem = NULL,
   $countersMap = new stdClass(), // new object for counters
@@ -129,7 +129,7 @@ function JSONRenderedCard(
     'sType' => $sType,
     'restriction' => $restriction,
     'isBroken' => $isBroken,
-    'onChain' => $onChain,
+    'isAttack' => $isAttack,
     'isFrozen' => $isFrozen,
     'countersMap' => $countersMap,
     'label' => $label,
@@ -172,7 +172,7 @@ function Card($cardNumber, $folder, $maxHeight, $action = 0, $showHover = 0, $ov
   }
   $fileExt = ".png";
   $folderPath = $folder;
-  if ($cardNumber == "ENDSTEP" || $cardNumber == "ENDTURN" || $cardNumber == "RESUMETURN" || $cardNumber == "PHANTASM" || $cardNumber == "FINALIZECHAINLINK" || $cardNumber == "DEFENDSTEP" || $cardNumber == "AIM_cropped") {
+  if ($cardNumber == "ENDSTEP" || $cardNumber == "ENDTURN" || $cardNumber == "RESUMETURN" || $cardNumber == "PHANTASM" || $cardNumber == "FINALIZEATTACK" || $cardNumber == "DEFENDSTEP" || $cardNumber == "AIM_cropped") {
     $folderPath = str_replace("CardImages", "Images", $folderPath);
     $folderPath = str_replace("concat", "Images", $folderPath);
     $showHover = 0;
@@ -595,7 +595,7 @@ function CreateRadioButton($input, $value, $immediateSubmitMode, $currentInput, 
   return $rv;
 }
 
-function CreatePopup($id, $fromArr, $canClose, $defaultState = 0, $title = "", $arrElements = 1, $customInput = "", $path = "./", $big = false, $overCombatChain = false, $additionalComments = "", $size = 0)
+function CreatePopup($id, $fromArr, $canClose, $defaultState = 0, $title = "", $arrElements = 1, $customInput = "", $path = "./", $big = false, $overAttack = false, $additionalComments = "", $size = 0)
 {
   global $darkMode, $cardSize, $playerID;
   $style = "";
@@ -619,7 +619,7 @@ function CreatePopup($id, $fromArr, $canClose, $defaultState = 0, $title = "", $
     $height = "90%";
     $overCC = 1001;
   }
-  if ($overCombatChain) {
+  if ($overAttack) {
     $top = "160px";
     $left = "calc(25% - 129px)";
     $width = "auto";
@@ -648,12 +648,12 @@ function CreatePopup($id, $fromArr, $canClose, $defaultState = 0, $title = "", $
   return $rv;
 }
 
-function CreatePopupAPI($id, $fromArr, $canClose, $defaultState = 0, $title = "", $arrElements = 1, $customInput = "", $path = "./", $big = false, $overCombatChain = false, $additionalComments = "", $size = 0, $cardsArray = [])
+function CreatePopupAPI($id, $fromArr, $canClose, $defaultState = 0, $title = "", $arrElements = 1, $customInput = "", $path = "./", $big = false, $overAttack = false, $additionalComments = "", $size = 0, $cardsArray = [])
 {
   $result = new stdClass();
   $result->size = $size;
   $result->big = $big;
-  $result->overCombatChain = $overCombatChain;
+  $result->overAttack = $overAttack;
   $result->id = $id;
   $result->title = $title;
   $result->canClose = $canClose;

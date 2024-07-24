@@ -31,14 +31,8 @@ function ProcessMacros()
         }
         if($turn[0] == "INSTANT" && count($layers) > 0)
         {
-          if($layers[0] == "FINALIZECHAINLINK" && HoldPrioritySetting($currentPlayer) != "1") { $somethingChanged = true; PassInput(true); }
+          if($layers[0] == "FINALIZEATTACK" && HoldPrioritySetting($currentPlayer) != "1") { $somethingChanged = true; PassInput(true); }
           else if($layers[0] == "DEFENDSTEP" && HoldPrioritySetting($currentPlayer) != "1") { $somethingChanged = true; PassInput(true); }
-          else if($layers[5] != "-")//Means there is a unique ID
-          {
-            $subtype = CardSubType($layers[2]);
-            if(DelimStringContains($subtype, "Aura") && GetAuraGemState($layers[1], $layers[2]) == 0) { $somethingChanged = true; PassInput(true); }
-            if(DelimStringContains($subtype, "Item") && GetItemGemState($layers[1], $layers[2]) == 0) { $somethingChanged = true; PassInput(true); }
-          }
         }
       }
       else if(AutopassPhaseWithOneOption($turn[0]) && SearchCount($turn[2]) == 1) {

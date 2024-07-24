@@ -25,8 +25,6 @@ function MZDestroy($player, $lastResult)
     switch ($mzIndex[0]) {
       case "MYHAND": $lastResult = DiscardCard($player, $mzIndex[1]); break;
       case "THEIRHAND": $lastResult = DiscardCard($otherPlayer, $mzIndex[1]); break;
-      case "MYCHAR": $lastResult = DestroyCharacter($player, $mzIndex[1]); break;
-      case "THEIRCHAR": $lastResult = DestroyCharacter($otherPlayer, $mzIndex[1]); break;
       case "MYALLY":
         $ally = new Ally("MYALLY-" . $mzIndex[1], $player);
         $lastResult = $ally->Destroy();
@@ -35,8 +33,6 @@ function MZDestroy($player, $lastResult)
         $ally = new Ally("MYALLY-" . $mzIndex[1], $otherPlayer);
         $lastResult = $ally->Destroy();
         break;
-      case "MYAURAS": $lastResult = DestroyAura($player, $mzIndex[1]); break;
-      case "THEIRAURAS": $lastResult = DestroyAura($otherPlayer, $mzIndex[1]); break;
       case "MYITEMS": $lastResult = DestroyItemForPlayer($player, $mzIndex[1]); break;
       case "THEIRITEMS": $lastResult = DestroyItemForPlayer($otherPlayer, $mzIndex[1]); break;
       case "MYARS": case "MYRESOURCES": $lastResult = DestroyArsenal($player, $mzIndex[1]); break;
@@ -69,7 +65,6 @@ function MZRemove($player, $lastResult)
       case "THEIRPITCH": RemovePitch($otherPlayer, $mzIndex[1]); break;
       case "MYHAND": $lastResult = RemoveHand($player, $mzIndex[1]); break;
       case "THEIRHAND": $lastResult = RemoveHand($otherPlayer, $mzIndex[1]); break;
-      case "THEIRAURAS": RemoveAura($otherPlayer, $mzIndex[1]); break;
       case "MYMEMORY": RemoveMemory($player, $mzIndex[1]); break;
       case "THEIRMEMORY": RemoveMemory($otherPlayer, $mzIndex[1]); break;
       case "MYDECK":
@@ -181,23 +176,6 @@ function MZAttack($player, $mzIndex)
   $abilityIndex = GetAbilityIndex($ally->CardID(), $ally->Index(), "Attack");
   SetClassState($player, $CS_AbilityIndex, $abilityIndex);
   PlayCard($ally->CardID(), "PLAY", -1, $ally->Index(), $ally->UniqueID(), skipAbilityType:true);
-}
-
-function MZUndestroy($player, $parameter, $lastResult)
-{
-  $lastResultArr = explode(",", $lastResult);
-  $params = explode(",", $parameter);
-  $otherPlayer = ($player == 1 ? 2 : 1);
-  for($i = 0; $i < count($lastResultArr); ++$i) {
-    $mzIndex = explode("-", $lastResultArr[$i]);
-    switch ($mzIndex[0]) {
-      case "MYCHAR":
-        UndestroyCharacter($player, $mzIndex[1]);
-        break;
-      default: break;
-    }
-  }
-  return $lastResult;
 }
 
 function MZBanish($player, $parameter, $lastResult)
@@ -387,16 +365,6 @@ function MZSort($mzIndices)
     $lowestIndex = 0;
   }
   return $output;
-}
-
-function MZEndCombat($player, $mzIndex)
-{
-  global $mainPlayer;
-  $mzArr = explode("-", $mzIndex);
-  if($mzArr[0] == "MYALLY") $controllingPlayer = $player;
-  else if($mzArr[0] == "THEIRALLY") $controllingPlayer = ($player == 1 ? 2 : 1);
-  else return;
-  if(IsSpecificAllyAttacking($controllingPlayer, $mzArr[1])) CloseCombatChain();
 }
 
 function IsFrozenMZ(&$array, $zone, $i)

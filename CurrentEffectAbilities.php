@@ -4,8 +4,7 @@
 //Return 1 if the effect should be removed
 function EffectHitEffect($cardID)
 {
-  global $combatChainState, $CCS_GoesWhereAfterLinkResolves, $defPlayer, $mainPlayer, $CCS_WeaponIndex, $combatChain, $CCS_DamageDealt;
-  $attackID = $combatChain[0];
+  global $attackState, $defPlayer, $mainPlayer, $AS_AttackerIndex, $AS_DamageDealt;
   switch($cardID) {
     case "6954704048"://Heroic Sacrifice
       $ally = new Ally(AttackerMZID($mainPlayer), $mainPlayer);
@@ -32,7 +31,7 @@ function EffectHitEffect($cardID)
 }
 
 //Return true if there's a chained action
-function FinalizeChainLinkEffects()
+function FinalizeAttackEffects()
 {
   global $mainPlayer, $currentTurnEffects;
   for($i=0; $i<count($currentTurnEffects); $i+=CurrentTurnPieces()) {
@@ -59,7 +58,7 @@ function FinalizeChainLinkEffects()
         return true;
       case "5896817672-2"://Headhunting
       case "5896817672-3":
-        global $CCS_CantAttackBase;
+        global $AS_CantAttackBase;
         PrependDecisionQueue("REMOVECURRENTEFFECT", $mainPlayer, $currentTurnEffects[$i]);
         PrependDecisionQueue("MZOP", $mainPlayer, "ATTACK", 1);
         PrependDecisionQueue("PASSPARAMETER", $mainPlayer, "{0}");
@@ -67,7 +66,7 @@ function FinalizeChainLinkEffects()
         PrependDecisionQueue("MZOP", $mainPlayer, "GETUNIQUEID", 1);
         PrependDecisionQueue("MZALLCARDTRAITORPASS", $mainPlayer, "Bounty Hunter", 1);
         PrependDecisionQueue("PASSPARAMETER", $mainPlayer, "{0}", 1);
-        PrependDecisionQueue("SETCOMBATCHAINSTATE", $mainPlayer, $CCS_CantAttackBase, 1);
+        PrependDecisionQueue("SETATTACKSTATE", $mainPlayer, $AS_CantAttackBase, 1);
         PrependDecisionQueue("PASSPARAMETER", $mainPlayer, 1, 1);
         PrependDecisionQueue("SETDQVAR", $mainPlayer, "0");
         PrependDecisionQueue("MAYCHOOSEMULTIZONE", $mainPlayer, "<-", 1);
@@ -182,53 +181,6 @@ function EffectHasBlockModifier($cardID)
   {
     default: return false;
   }
-}
-
-function EffectBlockModifier($cardID, $index)
-{
-  global $combatChain, $defPlayer, $mainPlayer;
-  switch($cardID) {
-
-    default:
-      return 0;
-  }
-}
-
-function RemoveEffectsOnChainClose()
-{
-
-}
-
-function OnAttackEffects($attack)
-{
-  global $currentTurnEffects, $mainPlayer, $defPlayer;
-  $attackType = CardType($attack);
-  for($i = count($currentTurnEffects) - CurrentTurnPieces(); $i >= 0; $i -= CurrentTurnPieces()) {
-    $remove = false;
-    if($currentTurnEffects[$i + 1] == $mainPlayer) {
-      switch($currentTurnEffects[$i]) {
-
-        default:
-          break;
-      }
-    }
-    if($remove) RemoveCurrentTurnEffect($i);
-  }
-}
-
-function CurrentEffectBaseAttackSet($cardID)
-{
-  global $currentPlayer, $currentTurnEffects;
-  $mod = -1;
-  for($i = count($currentTurnEffects) - CurrentTurnPieces(); $i >= 0; $i -= CurrentTurnPieces()) {
-    if($currentTurnEffects[$i + 1] == $currentPlayer && IsCombatEffectActive($currentTurnEffects[$i])) {
-      switch($currentTurnEffects[$i]) {
-
-        default: break;
-      }
-    }
-  }
-  return $mod;
 }
 
 function CurrentEffectCostModifiers($cardID, $from, $reportMode=false)
@@ -380,26 +332,6 @@ function CurrentEffectDamagePrevention($player, $type, $damage, $source, $preven
   return $damage;
 }
 
-function CurrentEffectAttackAbility()
-{
-  global $currentTurnEffects, $combatChain, $mainPlayer;
-  global $CS_PlayIndex;
-  if(count($combatChain) == 0) return;
-  $attackID = $combatChain[0];
-  $attackType = CardType($attackID);
-  for($i = count($currentTurnEffects) - CurrentTurnPieces(); $i >= 0; $i -= CurrentTurnPieces()) {
-    $remove = false;
-    if($currentTurnEffects[$i + 1] == $mainPlayer) {
-      switch ($currentTurnEffects[$i]) {
-        
-        default:
-          break;
-      }
-    }
-    if($remove) RemoveCurrentTurnEffect($i);
-  }
-}
-
 function CurrentEffectPlayAbility($cardID, $from)
 {
   global $currentTurnEffects, $currentPlayer, $actionPoints, $CS_LastDynCost;
@@ -457,7 +389,7 @@ function CurrentEffectGrantsNonAttackActionGoAgain($cardID)
 
 function CurrentEffectGrantsGoAgain()
 {
-  global $currentTurnEffects, $mainPlayer, $combatChainState, $CCS_AttackFused;
+  global $currentTurnEffects, $mainPlayer, $attackState;
   for($i = 0; $i < count($currentTurnEffects); $i += CurrentTurnEffectPieces()) {
     if($currentTurnEffects[$i + 1] == $mainPlayer && IsCombatEffectActive($currentTurnEffects[$i]) && !IsCombatEffectLimited($i)) {
       switch ($currentTurnEffects[$i]) {
@@ -625,9 +557,8 @@ function CurrentEffectStartTurnAbilities()
 
 function IsCombatEffectActive($cardID)
 {
-  global $combatChain, $currentPlayer;
-  if(count($combatChain) == 0) return;
-  $attackID = $combatChain[0];
+  global $currentPlayer;
+  if(!AttackIsOngoing()) return;
   $effectArr = explode("-", $cardID);
   $cardID = $effectArr[0];
   switch($cardID)

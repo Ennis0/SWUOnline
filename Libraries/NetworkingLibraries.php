@@ -1,9 +1,9 @@
 <?php
 function ProcessInput($playerID, $mode, $buttonInput, $cardID, $chkCount, $chkInput, $isSimulation=false, $inputText="")
 {
-  global $gameName, $currentPlayer, $mainPlayer, $dqVars, $turn, $CS_CharacterIndex, $CS_PlayIndex, $decisionQueue, $CS_NextNAAInstant, $skipWriteGamestate, $combatChain, $landmarks;
+  global $gameName, $currentPlayer, $mainPlayer, $dqVars, $turn, $CS_CharacterIndex, $CS_PlayIndex, $decisionQueue, $CS_NextNAAInstant, $skipWriteGamestate, $landmarks;
   global $SET_PassDRStep, $actionPoints, $currentPlayerActivity, $redirectPath;
-  global $dqState, $layers, $combatChainState;
+  global $dqState, $layers, $attackState;
   global $roguelikeGameID;
   switch ($mode) {
     case 3: //Play equipment ability
@@ -220,14 +220,6 @@ function ProcessInput($playerID, $mode, $buttonInput, $cardID, $chkCount, $chkIn
     case 20: //YESNO
       if ($turn[0] == "YESNO" && ($buttonInput == "YES" || $buttonInput == "NO")) ContinueDecisionQueue($buttonInput);
       break;
-    case 21: //Combat chain ability
-      $index = $cardID; //Overridden to be index instead
-      $cardID = $combatChain[$index];
-      if (AbilityPlayableFromCombatChain($cardID) && IsPlayable($cardID, $turn[0], "PLAY", $index)) {
-        SetClassState($playerID, $CS_PlayIndex, $index);
-        PlayCard($cardID, "PLAY", -1);
-      }
-      break;
     case 22: //Aura ability
       $index = $cardID; //Overridden to be index instead
       $auras = &GetAuras($playerID);
@@ -398,9 +390,9 @@ function ProcessInput($playerID, $mode, $buttonInput, $cardID, $chkCount, $chkIn
         PassInput(false);
       }
       break;
-    case 100: //Break Chain
-      if($currentPlayer == $mainPlayer && count($combatChain) == 0) {
-        ResetCombatChainState();
+    case 100: //Cancel attack
+      if($currentPlayer == $mainPlayer && !AttackIsOngoing()) {
+        ResetAttackState();
         ProcessDecisionQueue();
       }
       break;
@@ -705,7 +697,7 @@ function Passed(&$turn, $playerID)
 function PassInput($autopass = false)
 {
   global $turn, $currentPlayer, $initiativeTaken, $initiativePlayer;
-  if($turn[0] == "END" || $turn[0] == "MAYMULTICHOOSETEXT" || $turn[0] == "MAYCHOOSECOMBATCHAIN" || $turn[0] == "MAYCHOOSEMULTIZONE" || $turn[0] == "MAYMULTICHOOSEAURAS" ||$turn[0] == "MAYMULTICHOOSEHAND" || $turn[0] == "MAYCHOOSEHAND" || $turn[0] == "MAYCHOOSEDISCARD" || $turn[0] == "MAYCHOOSEARSENAL" || $turn[0] == "MAYCHOOSEPERMANENT" || $turn[0] == "MAYCHOOSEDECK" || $turn[0] == "MAYCHOOSEMYSOUL" || $turn[0] == "MAYCHOOSETOP" || $turn[0] == "MAYCHOOSECARD" || $turn[0] == "INSTANT" || $turn[0] == "OK") {
+  if($turn[0] == "END" || $turn[0] == "MAYMULTICHOOSETEXT" || $turn[0] == "MAYCHOOSEMULTIZONE" || $turn[0] == "MAYMULTICHOOSEAURAS" ||$turn[0] == "MAYMULTICHOOSEHAND" || $turn[0] == "MAYCHOOSEHAND" || $turn[0] == "MAYCHOOSEDISCARD" || $turn[0] == "MAYCHOOSEARSENAL" || $turn[0] == "MAYCHOOSEPERMANENT" || $turn[0] == "MAYCHOOSEDECK" || $turn[0] == "MAYCHOOSEMYSOUL" || $turn[0] == "MAYCHOOSETOP" || $turn[0] == "MAYCHOOSECARD" || $turn[0] == "INSTANT" || $turn[0] == "OK") {
     ContinueDecisionQueue("PASS");
   } else {
     if($autopass == true);
@@ -733,12 +725,10 @@ function Pass(&$turn, $playerID, &$currentPlayer)
     return 1;
   } else if($turn[0] == "B") {
     AddLayer("DEFENDSTEP", $mainPlayer, "-");
-    OnBlockResolveEffects();
-    BeginningReactionStepEffects();
     ProcessDecisionQueue();
   } else if($turn[0] == "A") {
     if(count($turn) >= 3 && $turn[2] == "D") {
-      return BeginChainLinkResolution();
+      return BeginAttackResolution();
     } else {
       $currentPlayer = $defPlayer;
       $turn[0] = "D";
@@ -746,7 +736,7 @@ function Pass(&$turn, $playerID, &$currentPlayer)
     }
   } else if($turn[0] == "D") {
     if(count($turn) >= 3 && $turn[2] == "A") {
-      return BeginChainLinkResolution();
+      return BeginAttackResolution();
     } else {
       $currentPlayer = $mainPlayer;
       $turn[0] = "A";
@@ -756,48 +746,26 @@ function Pass(&$turn, $playerID, &$currentPlayer)
   return 0;
 }
 
-function BeginChainLinkResolution()
+function BeginAttackResolution()
 {
   global $mainPlayer, $turn;
   $turn[0] = "M";
-  ChainLinkBeginResolutionEffects();
-  AddDecisionQueue("RESOLVECHAINLINK", $mainPlayer, "-");
+  AddDecisionQueue("RESOLVEATTACK", $mainPlayer, "-");
   ProcessDecisionQueue();
 }
 
-function ChainLinkBeginResolutionEffects()
+function ResolveAttack()
 {
-  global $combatChain, $mainPlayer, $defPlayer, $CCS_CombatDamageReplaced, $combatChainState, $CCS_WeaponIndex, $CID_BloodRotPox;
-  if(CardType($combatChain[0]) == "W") {
-    $mainCharacterEffects = &GetMainCharacterEffects($mainPlayer);
-    $index = $combatChainState[$CCS_WeaponIndex];
-    for($i = 0; $i < count($mainCharacterEffects); $i += CharacterEffectPieces()) {
-      if($mainCharacterEffects[$i] == $index) {
-        switch($mainCharacterEffects[$i + 1]) {
-
-          default: break;
-        }
-      }
-    }
-  }
-  switch($combatChain[0])
-  {
-    default: break;
-  }
-}
-
-function ResolveChainLink()
-{
-  global $combatChain, $combatChainState, $currentPlayer, $mainPlayer, $defPlayer, $currentTurnEffects, $CCS_CombatDamageReplaced, $CCS_LinkTotalAttack;
-  global $CCS_DamageDealt, $CCS_HitsWithWeapon;
+  global $attackState, $currentPlayer, $mainPlayer, $defPlayer, $currentTurnEffects;
+  global $AS_DamageDealt;
   UpdateGameState($currentPlayer);
   BuildMainPlayerGameState();
 
   $target = GetAttackTarget();
-  if($target == "THEIRALLY--1") {
-    CloseCombatChain(true);
+  if($target == "THEIRALLY--1") {//Means the target was already destroyed
+    CancelAttack();
     ProcessDecisionQueue();
-    return;//Means the target was already destroyed
+    return;
   }
 
   $totalAttack = 0;
@@ -809,7 +777,6 @@ function ResolveChainLink()
   $attackerID = $attacker->CardID();
   $attackerSurvived = 1;
   $totalAttack = $attacker->CurrentPower();
-  $combatChainState[$CCS_LinkTotalAttack] = $totalAttack;
   LogCombatResolutionStats($totalAttack, 0);
 
   $targetArr = explode("-", $target);
@@ -822,9 +789,9 @@ function ResolveChainLink()
     if($defenderPower < 0) $defenderPower = 0;
     $excess = $totalAttack - $defender->Health();
     $damageDealt = 0;
-    $destroyed = $defender->DealDamage($totalAttack, bypassShield:HasSaboteur($attackerID, $mainPlayer, $attacker->Index()), fromCombat:true, damageDealt:$combatChainState[$CCS_DamageDealt]);
+    $destroyed = $defender->DealDamage($totalAttack, bypassShield:HasSaboteur($attackerID, $mainPlayer, $attacker->Index()), fromCombat:true, damageDealt:$attackState[$AS_DamageDealt]);
     if($destroyed) ClearAttackTarget();
-    if($attackerArr[0] == "MYALLY" && (!$destroyed || ($combatChain[0] != "9500514827" && $combatChain[0] != "4328408486" && !SearchCurrentTurnEffects("8297630396", $mainPlayer)))) { //Han Solo shoots first; also Incinerator Trooper
+    if($attackerArr[0] == "MYALLY" && (!$destroyed || ($attackerID != "9500514827" && $attackerID != "4328408486" && !SearchCurrentTurnEffects("8297630396", $mainPlayer)))) { //Han Solo shoots first; also Incinerator Trooper
       $destroyed = $attacker->DealDamage($defenderPower, fromCombat:true);
       if($destroyed) {
         ClearAttacker();
@@ -840,9 +807,8 @@ function ResolveChainLink()
     }
     AddDecisionQueue("RESOLVECOMBATDAMAGE", $mainPlayer, $totalAttack);
   } else {
-    if ($combatChainState[$CCS_CombatDamageReplaced] == 1) $damage = 0;
-    else $damage = $totalAttack - $totalDefense;
-    DamageTrigger($defPlayer, $damage, "COMBAT", $combatChain[0]); //Include prevention
+    $damage = $totalAttack - $totalDefense;
+    DamageTrigger($defPlayer, $damage, "COMBAT", $attackerID[0]); //Include prevention
     AddDecisionQueue("RESOLVECOMBATDAMAGE", $mainPlayer, "-");
   }
   if($attackerSurvived) {
@@ -853,135 +819,53 @@ function ResolveChainLink()
 
 function ResolveCombatDamage($damageDone)
 {
-  global $combatChain, $combatChainState, $currentPlayer, $mainPlayer, $currentTurnEffects;
-  global $CCS_DamageDealt, $CCS_HitsWithWeapon, $EffectContext, $CS_HitsWithWeapon, $CS_DamageDealt;
+  global $attackState, $currentPlayer, $mainPlayer, $currentTurnEffects;
+  global $AS_DamageDealt, $EffectContext, $CS_HitsWithWeapon, $CS_DamageDealt;
   global $CS_HitsWithSword;
-  $wasHit = $damageDone > 0;
 
-  PrependLayer("FINALIZECHAINLINK", $mainPlayer, "0");
+  PrependLayer("FINALIZEATTACK", $mainPlayer, "0");
 
   WriteLog("Combat resulted in <span style='color:Crimson;'>$damageDone damage</span>");
 
-  if(!DelimStringContains(CardSubtype($combatChain[0]), "Ally")) {
-    SetClassState($mainPlayer, $CS_DamageDealt, GetClassState($mainPlayer, $CS_DamageDealt) + $damageDone);
-  }
-
-  if($wasHit)
+  if($damageDone > 0)
   {
-    if(!IsAllyAttackTarget()) $combatChainState[$CCS_DamageDealt] = $damageDone;
-    if(CardType($combatChain[0]) == "W") {
-      ++$combatChainState[$CCS_HitsWithWeapon];
-      IncrementClassState($mainPlayer, $CS_HitsWithWeapon);
-      if(SubtypeContains($combatChain[0], "Sword", $mainPlayer)) IncrementClassState($mainPlayer, $CS_HitsWithSword);
-    }
-    if(!HitEffectsArePrevented())
-    {
-      for($i = 1; $i < count($combatChain); $i += CombatChainPieces()) {
-        if($combatChain[$i] == $mainPlayer) {
-          $EffectContext = $combatChain[$i - 1];
-          ProcessHitEffect($combatChain[$i - 1]);
+    $attacker = new Ally(AttackerMZID($mainPlayer));
+    if(!IsAllyAttackTarget()) $attackState[$AS_DamageDealt] = $damageDone;
+    $EffectContext = $attacker->CardID();
+    ProcessHitEffect($attacker->CardID());
+    for($i = count($currentTurnEffects) - CurrentTurnPieces(); $i >= 0; $i -= CurrentTurnPieces()) {
+      if(IsCombatEffectActive($currentTurnEffects[$i])) {
+        if($currentTurnEffects[$i + 1] == $mainPlayer) {
+          $shouldRemove = EffectHitEffect($currentTurnEffects[$i]);
+          if($shouldRemove == 1) RemoveCurrentTurnEffect($i);
         }
       }
-      for($i = count($currentTurnEffects) - CurrentTurnPieces(); $i >= 0; $i -= CurrentTurnPieces()) {
-        if(IsCombatEffectActive($currentTurnEffects[$i])) {
-          if($currentTurnEffects[$i + 1] == $mainPlayer) {
-            $shouldRemove = EffectHitEffect($currentTurnEffects[$i]);
-            if($shouldRemove == 1) RemoveCurrentTurnEffect($i);
-          }
-        }
-      }
-      $currentTurnEffects = array_values($currentTurnEffects); //In case any were removed
-      MainCharacterHitAbilities();
-      MainCharacterHitEffects();
-      ArsenalHitEffects();
-      AuraHitEffects($combatChain[0]);
-      ItemHitEffects($combatChain[0]);
-      AttackDamageAbilities(GetClassState($mainPlayer, $CS_DamageDealt));
     }
+    $currentTurnEffects = array_values($currentTurnEffects); //In case any were removed
   }
   $currentPlayer = $mainPlayer;
   ProcessDecisionQueue(); //Any combat related decision queue logic should be main player gamestate
 }
 
-function FinalizeChainLink($chainClosed = false)
+function FinalizeAttack($attackOver = false)
 {
-  global $turn, $actionPoints, $combatChain, $mainPlayer, $currentTurnEffects, $currentPlayer, $combatChainState, $actionPoints, $CCS_DamageDealt;
-  global $mainClassState, $CS_AtksWWeapon, $CCS_GoesWhereAfterLinkResolves, $CS_LastAttack, $CCS_LinkTotalAttack, $CS_NumSwordAttacks, $chainLinks, $chainLinkSummary;
-  global $CS_AnotherWeaponGainedGoAgain, $CCS_HitThisLink, $initiativeTaken;
-  $chainClosed = true;
+  global $turn, $actionPoints, $mainPlayer, $currentTurnEffects, $currentPlayer, $attackState, $actionPoints, $AS_DamageDealt;
+  global $mainClassState, $CS_AtksWWeapon, $CS_LastAttack, $CS_NumSwordAttacks;
+  global $CS_AnotherWeaponGainedGoAgain, $initiativeTaken;
+  $attackOver = true;
   UpdateGameState($currentPlayer);
   BuildMainPlayerGameState();
-
-  ChainLinkResolvedEffects();
-
-  $chainLinks[] = array();
-  $CLIndex = count($chainLinks) - 1;
-  for ($i = 1; $i < count($combatChain); $i += CombatChainPieces()) {
-    $cardType = CardType($combatChain[$i - 1]);
-    if ($cardType != "W" || $cardType != "E" || $cardType != "C") {
-      $params = explode(",", GoesWhereAfterResolving($combatChain[$i - 1], "COMBATCHAIN", $combatChain[$i]));
-      $goesWhere = $params[0];
-      $modifier = (count($params) > 1 ? $params[1] : "NA");
-      if ($i == 1 && $combatChainState[$CCS_GoesWhereAfterLinkResolves] != "GY") {
-        $goesWhere = $combatChainState[$CCS_GoesWhereAfterLinkResolves];
-      }
-      switch ($goesWhere) {
-        case "BOTDECK":
-          AddBottomDeck($combatChain[$i - 1], $mainPlayer, "CC");
-          break;
-        case "HAND":
-          AddPlayerHand($combatChain[$i - 1], $mainPlayer, "CC");
-          break;
-        case "SOUL":
-          AddSoul($combatChain[$i - 1], $combatChain[$i], "CC");
-          break;
-        case "GY": /*AddGraveyard($combatChain[$i-1], $combatChain[$i], "CC");*/
-          break; //Things that would go to the GY stay on till the end of the chain
-        case "BANISH":
-          BanishCardForPlayer($combatChain[$i - 1], $mainPlayer, "CC", $modifier);
-          break;
-        case "MEMORY":
-          AddMemory($combatChain[$i - 1], $mainPlayer, "CC", "DOWN");
-          break;
-        default:
-          break;
-      }
-    }
-    $chainLinks[$CLIndex][] = $combatChain[$i-1]; //Card ID
-    $chainLinks[$CLIndex][] = $combatChain[$i]; //Player ID
-    $chainLinks[$CLIndex][] = ($goesWhere == "GY" && $combatChain[$i+1] != "PLAY" ? "1" : "0"); //Still on chain? 1 = yes, 0 = no
-    $chainLinks[$CLIndex][] = $combatChain[$i+1]; //From
-    $chainLinks[$CLIndex][] = $combatChain[$i+4]; //Attack Modifier
-    $chainLinks[$CLIndex][] = $combatChain[$i+5]; //Defense Modifier
-  }
-
-  $chainLinkSummary[] = $combatChainState[$CCS_DamageDealt];
-  $chainLinkSummary[] = $combatChainState[$CCS_LinkTotalAttack];
-  $chainLinkSummary[] = "-";//Talent
-  $chainLinkSummary[] = "-";//Class
-  $chainLinkSummary[] = SerializeCurrentAttackNames();
-  $numHitsOnLink = ($combatChainState[$CCS_DamageDealt] > 0 ? 1 : 0);
-  $numHitsOnLink += intval($combatChainState[$CCS_HitThisLink]);
-  $chainLinkSummary[] = $numHitsOnLink;//Num hits on link
 
   //Clean up combat effects that were used and are one-time
   CleanUpCombatEffects();
   CopyCurrentTurnEffectsFromCombat();
-  $hasChainedAction = FinalizeChainLinkEffects();
+  $hasChainedAction = FinalizeAttackEffects();
   ProcessAfterCombatLayer();
 
-  //Don't change state until the end, in case it changes what effects are active
-  SetClassState($mainPlayer, $CS_LastAttack, $combatChain[0]);
-
-  $combatChain = [];
-  if ($chainClosed) {
-    ResetCombatChainState();
-    $turn[0] = "M";
-    if($initiativeTaken == 1) FinalizeAction();
-    else PassInput(true);
-  } else {
-    ResetChainLinkState();
-  }
+  ResetAttackState();
+  $turn[0] = "M";
+  if($initiativeTaken == 1) FinalizeAction();
+  else PassInput(true);
   
   if($hasChainedAction) ProcessDecisionQueue();
 }
@@ -1043,7 +927,7 @@ function ResumeRoundPass()
 function BeginTurnPass()
 {
   global $mainPlayer, $defPlayer, $decisionQueue;
-  ResetCombatChainState(); // The combat chain must be closed prior to the turn ending. The close step is outlined in 7.8 - specifically: CR 2.1 - 7.8.7. Fifth and finally, the Close Step ends, and the Action Phase continues. The Action Phase will always continue after the combat chain is closed - so there is another round of priority windows
+  ResetAttackState();
   ProcessDecisionQueue();
 }
 
@@ -1065,7 +949,6 @@ function EndStep()
 {
   global $mainPlayer, $turn;
   FinishTurnPass();
-  AuraBeginEndPhaseTriggers();
   BeginEndPhaseEffectTriggers();
   PlayerSuppress(1);
   PlayerSuppress(2);
@@ -1076,9 +959,8 @@ function FinishTurnPass()
 {
   global $mainPlayer;
   ClearLog();
-  ResetCombatChainState();
+  ResetAttackState();
   ItemEndTurnAbilities();
-  AuraBeginEndPhaseAbilities();
   BeginEndPhaseEffects();
   PermanentBeginEndPhaseEffects();
   AddDecisionQueue("PASSTURN", $mainPlayer, "-");
@@ -1099,7 +981,7 @@ function PassTurn()
 function FinalizeTurn()
 {
   //4.4.1. Players do not get priority during the End Phase.
-  global $currentPlayer, $currentRound, $playerID, $turn, $combatChain, $actionPoints, $mainPlayer, $defPlayer, $currentTurnEffects, $nextTurnEffects;
+  global $currentPlayer, $currentRound, $playerID, $turn, $actionPoints, $mainPlayer, $defPlayer, $currentTurnEffects, $nextTurnEffects;
   global $mainHand, $defHand, $mainDeck, $mainItems, $defItems, $defDeck, $mainCharacter, $defCharacter, $mainResources, $defResources;
   global $mainAuras, $firstPlayer, $lastPlayed, $layerPriority, $EffectContext;
 
@@ -1112,8 +994,6 @@ function FinalizeTurn()
       RemoveBanish($mainPlayer, $i);
     }
   }
-
-  AuraEndTurnAbilities();
 
   ArsenalEndTurn($mainPlayer);
   ArsenalEndTurn($defPlayer);
@@ -1131,8 +1011,6 @@ function FinalizeTurn()
   $lastPlayed = [];
 
   ResetCharacterEffects();
-  UnsetTurnBanish();
-  AuraEndTurnCleanup();
 
   DoGamestateUpdate();
 
@@ -1145,7 +1023,6 @@ function FinalizeTurn()
   $turn[2] = "";
   $turn[3] = "";
   $actionPoints = 1;
-  $combatChain = []; //TODO: Add cards to the discard pile?...
   for ($i = 0; $i < count($currentTurnEffects); $i += CurrentTurnEffectPieces()) {
     $effectCardID = explode("-", $currentTurnEffects[$i]);
     WriteLog("Start of turn effect for " . CardLink($effectCardID[0], $effectCardID[0]) . " is now active.");
@@ -1169,13 +1046,12 @@ function FinalizeTurn()
 }
 
 function SwapTurn() {
-  global $turn, $mainPlayer, $combatChain, $actionPoints, $defPlayer, $currentPlayer;
+  global $turn, $mainPlayer, $actionPoints, $defPlayer, $currentPlayer;
   $turn[0] = "M";
   //$turn[1] = $mainPlayer == 2 ? $turn[1] + 1 : $turn[1];
   $turn[2] = "";
   $turn[3] = "";
   $actionPoints = 1;
-  $combatChain = []; //TODO: Add cards to the discard pile?...
   $defPlayer = $mainPlayer;
   $mainPlayer = ($mainPlayer == 1 ? 2 : 1);
   $currentPlayer = $mainPlayer;
@@ -1228,7 +1104,6 @@ function PlayCard($cardID, $from, $dynCostResolved = -1, $index = -1, $uniqueID 
       else $baseCost = ($from == "PLAY" || $from == "EQUIP" ? AbilityCost($cardID, $index) : (CardCost($cardID) + SelfCostModifier($cardID, $from)));
       if(!$playingCard) $resources[1] += $dynCostResolved;
       else {
-        $frostbitesPaid = AuraCostModifier($cardID);
         $isAlternativeCostPaid = IsAlternativeCostPaid($cardID, $from);
         if($isAlternativeCostPaid)
         {
@@ -1322,14 +1197,13 @@ function PlayCard($cardID, $from, $dynCostResolved = -1, $index = -1, $uniqueID 
     if(IsStaticType($cardType, $from, $cardID)) {
       $playType = GetResolvedAbilityType($cardID, $from);
       $abilityType = $playType;
-      if($abilityType == "A" && !$canPlayAsInstant) ResetCombatChainState();
+      if($abilityType == "A" && !$canPlayAsInstant) ResetAttackState();
       PayAbilityAdditionalCosts($cardID);
       ActivateAbilityEffects();
     } else {
       if($cardType == "A" && !$canPlayAsInstant) {
-        ResetCombatChainState();
+        ResetAttackState();
       }
-      CombatChainPlayAbility($cardID);
       ItemPlayAbilities($cardID, $from);
       if(AspectContains($cardID, "Villainy", $currentPlayer)) IncrementClassState($currentPlayer, $CS_NumVillainyPlayed);
       IncrementClassState($currentPlayer, $CS_NumCardsPlayed);
@@ -1353,8 +1227,7 @@ function PlayCard($cardID, $from, $dynCostResolved = -1, $index = -1, $uniqueID 
   }
 
   if($turn[0] != "B" || (count($layers) > 0 && $layers[0] != "")) {
-    MainCharacterPlayCardAbilities($cardID, $from);
-    AuraPlayAbilities($cardID, $from);
+    LeaderPlayCardAbilities($cardID, $from);
     PermanentPlayAbilities($cardID, $from);
   }
   AddDecisionQueue("RESUMEPLAY", $currentPlayer, $cardID . "|" . $from . "|" . $resourcesPaid . "|" . GetClassState($currentPlayer, $CS_PlayIndex) . "|" . GetClassState($currentPlayer, $CS_PlayUniqueID));
@@ -1369,8 +1242,7 @@ function PlayCardSkipCosts($cardID, $from)
   if ($turn[0] != "B" || (count($layers) > 0 && $layers[0] != "")) {
     if (HasBoost($cardID)) Boost();
     GetLayerTarget($cardID);
-    MainCharacterPlayCardAbilities($cardID, $from);
-    AuraPlayAbilities($cardID, $from);
+    LeaderPlayCardAbilities($cardID, $from);
   }
   PlayCardEffect($cardID, $from, 0);
 }
@@ -1453,19 +1325,19 @@ function AddPrePitchDecisionQueue($cardID, $from, $index = -1, $skipAbilityType 
 //Find the legal targets for an attack
 function GetTargetOfAttack($attackID)
 {
-  global $mainPlayer, $combatChainState, $CCS_AttackTarget, $CCS_IsAmbush, $CCS_CantAttackBase;
+  global $mainPlayer, $attackState, $AS_AttackTarget, $AS_IsAmbush, $AS_CantAttackBase;
   $defPlayer = $mainPlayer == 1 ? 2 : 1;
   if(HasCleave($attackID))
   {
-    $combatChainState[$CCS_AttackTarget] = "THEIRCHAR-0";
+    $attackState[$AS_AttackTarget] = "THEIRCHAR-0";
     return;
   }
   $targets = "";
   $sentinelTargets = "";
-  if($combatChainState[$CCS_CantAttackBase] == 0 && $combatChainState[$CCS_IsAmbush] != 1){
+  if($attackState[$AS_CantAttackBase] == 0 && $attackState[$AS_IsAmbush] != 1){
     $targets = "THEIRCHAR-0";
   } else {
-    $combatChainState[$CCS_CantAttackBase] = 0;
+    $attackState[$AS_CantAttackBase] = 0;
   }
   $attacker = new Ally(AttackerMZID($mainPlayer));
   $attackerUpgrades = $attacker->GetUpgrades();
@@ -1567,24 +1439,11 @@ function MaterializeCardEffect($cardID)
   }
 }
 
-function UpdateLinkAttack()
-{
-  global $mainPlayer, $combatChainState, $CCS_LinkBaseAttack, $combatChain;
-  if(count($combatChain) == 0) return;
-  $ally = new Ally(AttackerMZID($mainPlayer), $mainPlayer);
-  $cardID = $ally->CardID();
-  $baseAttackSet = CurrentEffectBaseAttackSet($cardID);
-  if($baseAttackSet != -1) $attackValue = $baseAttackSet;
-  else $attackValue = $ally->CurrentPower();
-  $combatChainState[$CCS_LinkBaseAttack] = BaseAttackModifiers($attackValue);
-}
-
 function PlayCardEffect($cardID, $from, $resourcesPaid, $target = "-", $additionalCosts = "-", $uniqueID = "-1", $layerIndex = -1)
 {
-  global $turn, $combatChain, $currentPlayer, $defPlayer, $combatChainState, $CCS_AttackPlayedFrom, $CS_PlayIndex;
-  global $CS_CharacterIndex, $CS_NumNonAttackCards, $CS_PlayCCIndex, $CS_NumAttacks, $CCS_LinkBaseAttack;
-  global $CCS_WeaponIndex, $EffectContext, $CCS_AttackUniqueID, $CS_NumEventsPlayed, $CS_AfterPlayedBy, $layers;
-  global $CS_NumDragonAttacks, $CS_NumIllusionistAttacks, $CS_NumIllusionistActionCardAttacks, $CCS_IsBoosted;
+  global $turn, $currentPlayer, $defPlayer, $attackState, $CS_PlayIndex;
+  global $CS_CharacterIndex, $CS_NumNonAttackCards, $CS_NumAttacks;
+  global $AS_AttackerIndex, $EffectContext, $AS_AttackerUniqueID, $CS_NumEventsPlayed, $CS_AfterPlayedBy, $layers;
   global $SET_PassDRStep, $CS_AbilityIndex, $CS_NumMandalorianAttacks;
 
   if($layerIndex > -1) SetClassState($currentPlayer, $CS_PlayIndex, $layerIndex);
@@ -1594,57 +1453,36 @@ function PlayCardEffect($cardID, $from, $resourcesPaid, $target = "-", $addition
 
   $definedCardType = CardType($cardID);
   //Figure out where it goes
-  $openedChain = false;
-  $chainClosed = false;
-  $isBlock = ($turn[0] == "B" && count($layers) == 0); //This can change over the course of the function; for example if a phantasm gets popped
-  if (GoesOnCombatChain($turn[0], $cardID, $from)) {
+  if (GetResolvedAbilityType($cardID, $from) == "AA") { //If this is an attack
     if($from == "PLAY" && $uniqueID != "-1" && $index == -1 && !DelimStringContains(CardSubType($cardID), "Item")) { WriteLog(CardLink($cardID, $cardID) . " does not resolve because it is no longer in play."); return; }
-    $index = AddCombatChain($cardID, $currentPlayer, $from, $resourcesPaid);
-    if ($index == 0) {
-      ChangeSetting($defPlayer, $SET_PassDRStep, 0);
-      $combatChainState[$CCS_AttackPlayedFrom] = $from;
-      if ($definedCardType != "AA") $combatChainState[$CCS_WeaponIndex] = GetClassState($currentPlayer, $CS_PlayIndex);
-      $chainClosed = ProcessAttackTarget();
-      $baseAttackSet = CurrentEffectBaseAttackSet($cardID);
-      if($baseAttackSet != -1) $attackValue = $baseAttackSet;
-      else if(IsAllyAttacking()) {
-        $ally = new Ally("MYALLY-" . GetClassState($currentPlayer, $CS_PlayIndex), $currentPlayer);
-        $attackValue = $ally->CurrentPower();
-        $ally->IncrementTimesAttacked();
-        if(GetAttackTarget() == "THEIRCHAR-0") {
-          //Add attacker to defender's list of units that attacked their base this phase.
-          global $CS_UnitsThatAttackedBase;
-          AppendClassState($defPlayer, $CS_UnitsThatAttackedBase, $ally->UniqueID(), false);
-        }
-      }
-      else $attackValue = ($baseAttackSet != -1 ? $baseAttackSet : AttackValue($cardID));
-      $combatChainState[$CCS_LinkBaseAttack] = BaseAttackModifiers($attackValue);
-      $combatChainState[$CCS_AttackUniqueID] = $uniqueID;
-      $openedChain = true;
-      if($definedCardType == "AA" || $definedCardType == "W")
-      {
-        $char = &GetPlayerCharacter($currentPlayer);
-        $char[1] = 1;
-      }
-      if (!$chainClosed) {
-        IncrementClassState($currentPlayer, $CS_NumAttacks);
-        if(TraitContains($cardID, "Mandalorian", $currentPlayer, $index)) IncrementClassState($currentPlayer, $CS_NumMandalorianAttacks);
-        ArsenalAttackAbilities();
-        OnAttackEffects($cardID);
-      }
-      if (!$chainClosed || $definedCardType == "AA") {
-        AuraAttackAbilities($cardID);
-        if ($from == "PLAY" && IsAlly($cardID))
-        {
-          AllyAttackAbilities($cardID);
-          SpecificAllyAttackAbilities($cardID);
-        }
+    $attackState[$AS_AttackerIndex] = GetClassState($currentPlayer, $CS_PlayIndex);
+    $attackState[$AS_AttackerUniqueID] = $uniqueID;
+    ChangeSetting($defPlayer, $SET_PassDRStep, 0);
+    ProcessAttackTarget();
+    if(AttackIsOngoing()) {
+      $ally = new Ally("MYALLY-" . GetClassState($currentPlayer, $CS_PlayIndex), $currentPlayer);
+      $attackValue = $ally->CurrentPower();
+      $ally->IncrementTimesAttacked();
+      if(GetAttackTarget() == "THEIRCHAR-0") {
+        //Add attacker to defender's list of units that attacked their base this phase.
+        global $CS_UnitsThatAttackedBase;
+        AppendClassState($defPlayer, $CS_UnitsThatAttackedBase, $ally->UniqueID(), false);
       }
     }
-    else { //On chain, but not index 0
-      if($definedCardType == "DR") OnDefenseReactionResolveEffects();
+    else $attackValue = ($baseAttackSet != -1 ? $baseAttackSet : AttackValue($cardID));
+    $attackState[$AS_AttackerUniqueID] = $uniqueID;
+    if($definedCardType == "AA" || $definedCardType == "W")
+    {
+      $char = &GetPlayerCharacter($currentPlayer);
+      $char[1] = 1;
     }
-    SetClassState($currentPlayer, $CS_PlayCCIndex, $index);
+    IncrementClassState($currentPlayer, $CS_NumAttacks);
+    if(TraitContains($cardID, "Mandalorian", $currentPlayer, $attackState[$AS_AttackerIndex])) IncrementClassState($currentPlayer, $CS_NumMandalorianAttacks);
+    if ($from == "PLAY" && IsAlly($cardID))
+    {
+      AllyAttackAbilities($cardID);
+      SpecificAllyAttackAbilities($cardID);
+    }
   } else if ($from != "PLAY") {
     $cardSubtype = CardSubType($cardID);
     if ($definedCardType != "C" && $definedCardType != "E" && $definedCardType != "W") {
@@ -1705,50 +1543,44 @@ function PlayCardEffect($cardID, $from, $resourcesPaid, $target = "-", $addition
     }
   }
   //Resolve Effects
-  if(!$isBlock) {
-    CurrentEffectPlayOrActivateAbility($cardID, $from);
-    if($from != "PLAY") {
-      CurrentEffectPlayAbility($cardID, $from);
-      ArsenalPlayCardAbilities($cardID);
-      CharacterPlayCardAbilities($cardID, $from);
-    }
-    $EffectContext = $cardID;
-    if(!$chainClosed) {
-      if(GetClassState($currentPlayer, $CS_AfterPlayedBy) != "-") AfterPlayedByAbility(GetClassState($currentPlayer, $CS_AfterPlayedBy));
-      if(DefinedTypesContains($cardID, "Event", $currentPlayer) && SearchCurrentTurnEffects("3401690666", $currentPlayer, remove:true)) {
-        //Relentless
-        WriteLog("<span style='color:red;'>The event does nothing because of Relentless.</span>");
-      }
-      else {
-        $abilityIndex = GetClassState($currentPlayer, $CS_AbilityIndex);
-        $playIndex = GetClassState($currentPlayer, $CS_PlayIndex);
-        $layerName = "PLAYABILITY";
-        if($from == "PLAY" || $from == "EQUIP") {
-          if(GetResolvedAbilityType($cardID) == "A") $layerName = "ACTIVATEDABILITY";
-          else $layerName = "ATTACKABILITY";
-        }
-        if($layerName == "ATTACKABILITY") { if(HasAttackAbility($cardID)) PlayAbility($cardID, "PLAY", "0"); }
-        //TODO: Fix this Relentless and first light and The Mandalorian hack
-        else if($from == "PLAY" || $from == "EQUIP" || HasWhenPlayed($cardID) || $cardID == "3401690666" || $cardID == "4783554451" || $cardID == "4088c46c4d" || DefinedTypesContains($cardID, "Event", $currentPlayer) || DefinedTypesContains($cardID, "Upgrade", $currentPlayer)) AddLayer($layerName, $currentPlayer, $cardID, $from . "!" . $resourcesPaid . "!" . $target . "!" . $additionalCosts . "!" . $abilityIndex . "!" . $playIndex, "-", $uniqueID, append:true);
-        else if($from != "PLAY" && $from != "EQUIP") {
-          AddAllyPlayAbilityLayers($cardID, $from);
-        }
-      }
-    }
-    if($from != "PLAY") {
-      $index = LastAllyIndex($currentPlayer);
-      if(HasShielded($cardID, $currentPlayer, $index)) {
-        $allies = &GetAllies($currentPlayer);
-        AddLayer("TRIGGER", $currentPlayer, "SHIELDED", "-", "-", $allies[$index + 5], append:true);
-      }
-      if(HasAmbush($cardID, $currentPlayer, $index, $from)) {
-        $allies = &GetAllies($currentPlayer);
-        AddLayer("TRIGGER", $currentPlayer, "AMBUSH", "-", "-", $allies[$index + 5], append:true);
-      }
-    }
-    if (!$openedChain) ResolveGoAgain($cardID, $currentPlayer, $from);
-    CopyCurrentTurnEffectsFromAfterResolveEffects();
+  CurrentEffectPlayOrActivateAbility($cardID, $from);
+  if($from != "PLAY") {
+    CurrentEffectPlayAbility($cardID, $from);
+    ArsenalPlayCardAbilities($cardID);
   }
+  $EffectContext = $cardID;
+  if(GetClassState($currentPlayer, $CS_AfterPlayedBy) != "-") AfterPlayedByAbility(GetClassState($currentPlayer, $CS_AfterPlayedBy));
+  if(DefinedTypesContains($cardID, "Event", $currentPlayer) && SearchCurrentTurnEffects("3401690666", $currentPlayer, remove:true)) {
+    //Relentless
+    WriteLog("<span style='color:red;'>The event does nothing because of Relentless.</span>");
+  }
+  else {
+    $abilityIndex = GetClassState($currentPlayer, $CS_AbilityIndex);
+    $playIndex = GetClassState($currentPlayer, $CS_PlayIndex);
+    $layerName = "PLAYABILITY";
+    if($from == "PLAY" || $from == "EQUIP") {
+      if(GetResolvedAbilityType($cardID) == "A") $layerName = "ACTIVATEDABILITY";
+      else $layerName = "ATTACKABILITY";
+    }
+    if($layerName == "ATTACKABILITY") { if(HasAttackAbility($cardID)) PlayAbility($cardID, "PLAY", "0"); }
+    //TODO: Fix this Relentless and first light and The Mandalorian hack
+    else if($from == "PLAY" || $from == "EQUIP" || HasWhenPlayed($cardID) || $cardID == "3401690666" || $cardID == "4783554451" || $cardID == "4088c46c4d" || DefinedTypesContains($cardID, "Event", $currentPlayer) || DefinedTypesContains($cardID, "Upgrade", $currentPlayer)) AddLayer($layerName, $currentPlayer, $cardID, $from . "!" . $resourcesPaid . "!" . $target . "!" . $additionalCosts . "!" . $abilityIndex . "!" . $playIndex, "-", $uniqueID, append:true);
+    else if($from != "PLAY" && $from != "EQUIP") {
+      AddAllyPlayAbilityLayers($cardID, $from);
+    }
+  }
+  if($from != "PLAY") {
+    $index = LastAllyIndex($currentPlayer);
+    if(HasShielded($cardID, $currentPlayer, $index)) {
+      $allies = &GetAllies($currentPlayer);
+      AddLayer("TRIGGER", $currentPlayer, "SHIELDED", "-", "-", $allies[$index + 5], append:true);
+    }
+    if(HasAmbush($cardID, $currentPlayer, $index, $from)) {
+      $allies = &GetAllies($currentPlayer);
+      AddLayer("TRIGGER", $currentPlayer, "AMBUSH", "-", "-", $allies[$index + 5], append:true);
+    }
+  }
+  CopyCurrentTurnEffectsFromAfterResolveEffects();
 
   if ($CS_CharacterIndex != -1 && CanPlayAsInstant($cardID)) {
     RemoveCharacterEffects($currentPlayer, GetClassState($currentPlayer, $CS_CharacterIndex), "INSTANT");
@@ -1763,15 +1595,7 @@ function ProcessAttackTarget()
 {
   global $defPlayer;
   $target = explode("-", GetAttackTarget());
-  if ($target[0] == "THEIRAURAS") {
-    $auras = &GetAuras($defPlayer);
-    if (HasSpectra($auras[$target[1]])) {
-      DestroyAura($defPlayer, $target[1]);
-      CloseCombatChain();
-      return true;
-    }
-  }
-  else if($target[0] == "THEIRALLY") {
+  if($target[0] == "THEIRALLY") {
     $ally = new Ally($target[0] . "-" . $target[1], $defPlayer);
     AllyAttackedAbility($ally->CardID(), $target[1]);
   }
@@ -1785,9 +1609,9 @@ function WriteGamestate()
   global $p1ClassState, $p1CharacterEffects, $p1Soul, $p1CardStats, $p1TurnStats, $p1Allies, $p1Permanents, $p1Settings;
   global $p2Hand, $p2Deck, $p2CharEquip, $p2Resources, $p2Arsenal, $p2Items, $p2Auras, $p2Discard, $p2Pitch, $p2Banish;
   global $p2ClassState, $p2CharacterEffects, $p2Soul, $p2CardStats, $p2TurnStats, $p2Allies, $p2Permanents, $p2Settings;
-  global $landmarks, $winner, $firstPlayer, $currentPlayer, $currentRound, $turn, $actionPoints, $combatChain, $combatChainState;
+  global $landmarks, $winner, $firstPlayer, $currentPlayer, $currentRound, $turn, $actionPoints, $attackState;
   global $currentTurnEffects, $currentTurnEffectsFromCombat, $nextTurnEffects, $decisionQueue, $dqVars, $dqState;
-  global $layers, $layerPriority, $mainPlayer, $lastPlayed, $chainLinks, $chainLinkSummary, $p1Key, $p2Key;
+  global $layers, $layerPriority, $mainPlayer, $lastPlayed, $p1Key, $p2Key;
   global $permanentUniqueIDCounter, $inGameStatus, $animations, $currentPlayerActivity;
   global $p1TotalTime, $p2TotalTime, $lastUpdateTime;
   $filename = "./Games/" . $gameName . "/gamestate.txt";
@@ -1850,8 +1674,8 @@ function WriteGamestate()
   fwrite($handler, $currentRound. "\r\n");
   fwrite($handler, implode(" ", $turn) . "\r\n");
   fwrite($handler, $actionPoints . "\r\n");
-  fwrite($handler, implode(" ", $combatChain) . "\r\n");
-  fwrite($handler, implode(" ", $combatChainState) . "\r\n");
+  fwrite($handler, "\r\n"); //Unused
+  fwrite($handler, implode(" ", $attackState) . "\r\n");
   fwrite($handler, implode(" ", $currentTurnEffects) . "\r\n");
   fwrite($handler, implode(" ", $currentTurnEffectsFromCombat) . "\r\n");
   fwrite($handler, implode(" ", $nextTurnEffects) . "\r\n");
@@ -1862,11 +1686,8 @@ function WriteGamestate()
   fwrite($handler, implode(" ", $layerPriority) . "\r\n");
   fwrite($handler, $mainPlayer . "\r\n");
   fwrite($handler, implode(" ", $lastPlayed) . "\r\n");
-  fwrite($handler, count($chainLinks) . "\r\n");
-  for ($i = 0; $i < count($chainLinks); ++$i) {
-    fwrite($handler, implode(" ", $chainLinks[$i]) . "\r\n");
-  }
-  fwrite($handler, implode(" ", $chainLinkSummary) . "\r\n");
+  fwrite($handler, "\r\n"); //Unused
+  fwrite($handler, "\r\n"); //Unused
   fwrite($handler, $p1Key . "\r\n");
   fwrite($handler, $p2Key . "\r\n");
   fwrite($handler, $permanentUniqueIDCounter . "\r\n");

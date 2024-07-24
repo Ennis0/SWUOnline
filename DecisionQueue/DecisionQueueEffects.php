@@ -2,7 +2,7 @@
 
 function ModalAbilities($player, $card, $lastResult)
 {
-  global $combatChain, $defPlayer;
+  global $defPlayer;
   switch($card)
   {
     case "K2SO":

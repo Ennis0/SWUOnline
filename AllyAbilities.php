@@ -139,7 +139,7 @@ function RemoveAlly($player, $index)
 
 function DestroyAlly($player, $index, $skipDestroy = false, $fromCombat = false)
 {
-  global $combatChain, $mainPlayer, $defPlayer, $CS_NumAlliesDestroyed, $CS_NumLeftPlay;
+  global $mainPlayer, $defPlayer, $CS_NumAlliesDestroyed, $CS_NumLeftPlay;
   $allies = &GetAllies($player);
   $cardID = $allies[$index];
   $owner = $allies[$index+11];
@@ -336,7 +336,7 @@ function AllyDestroyedAbility($player, $index, $fromCombat)
   global $mainPlayer, $initiativePlayer;
   $allies = &GetAllies($player);
   $cardID = $allies[$index];
-  OnKillAbility($fromCombat);
+  AttackAndDefeatUnitAbility($fromCombat);
   $destroyedAlly = new Ally("MYALLY-" . $index, $player);
   if(!$destroyedAlly->LostAbilities()) {
     switch($cardID) {
@@ -717,10 +717,10 @@ function CollectBounties($player, $index, $reportMode=false) {
   return $numBounties;
 }
 
-function OnKillAbility($fromCombat)
+function AttackAndDefeatUnitAbility($fromCombat)
 {
-  global $combatChain, $mainPlayer, $defPlayer;
-  if(count($combatChain) == 0) return;
+  global $mainPlayer, $defPlayer;
+  if(!AttackIsOngoing()) return;
   $attackerAlly = new Ally(AttackerMZID($mainPlayer), $mainPlayer);
   $upgrades = $attackerAlly->GetUpgrades();
   for($i=0; $i<count($upgrades); ++$i) {
@@ -732,7 +732,7 @@ function OnKillAbility($fromCombat)
       default: break;
     }
   }
-  switch($combatChain[0])
+  switch($attackerAlly->CardID())
   {
     case "5230572435"://Mace Windu, Party Crasher
       $attackerAlly->Ready();
@@ -813,8 +813,8 @@ function AllyDamagePrevention($player, $index, $damage)
 //NOTE: This is for ally abilities that trigger when any ally attacks
 function AllyAttackAbilities($attackID)
 {
-  global $mainPlayer, $combatChainState, $CCS_AttackUniqueID, $defPlayer, $CCS_IsAmbush;
-  $index = SearchAlliesForUniqueID($combatChainState[$CCS_AttackUniqueID], $mainPlayer);
+  global $mainPlayer, $attackState, $AS_AttackerUniqueID, $defPlayer, $AS_IsAmbush;
+  $index = SearchAlliesForUniqueID($attackState[$AS_AttackerUniqueID], $mainPlayer);
   $restoreAmount = RestoreAmount($attackID, $mainPlayer, $index);
   if($restoreAmount > 0) Restore($restoreAmount, $mainPlayer);
   $allies = &GetAllies($mainPlayer);
@@ -827,7 +827,7 @@ function AllyAttackAbilities($attackID)
         AddCurrentTurnEffect("20f21b4948", $defPlayer);
         break;
       case "8107876051"://Enfys Nest
-        if($combatChainState[$CCS_IsAmbush] == 1) {
+        if($attackState[$AS_IsAmbush] == 1) {
           $target = new Ally(GetAttackTarget(), $defPlayer);
           AddCurrentTurnEffect("8107876051", $defPlayer, "PLAY", $target->UniqueID());
         }
@@ -1065,8 +1065,8 @@ function IsAlly($cardID, $player="")
 //NOTE: This is for the actual attack abilities that allies have
 function SpecificAllyAttackAbilities($attackID)
 {
-  global $mainPlayer, $defPlayer, $combatChainState, $CCS_WeaponIndex;
-  $attackerIndex = $combatChainState[$CCS_WeaponIndex];
+  global $mainPlayer, $defPlayer, $attackState, $AS_AttackerIndex;
+  $attackerIndex = $attackState[$AS_AttackerIndex];
   $attackerAlly = new Ally(AttackerMZID($mainPlayer), $mainPlayer);
   $upgrades = $attackerAlly->GetUpgrades();
   for($i=0; $i<count($upgrades); ++$i) {
@@ -1372,7 +1372,6 @@ function SpecificAllyAttackAbilities($attackID)
         $ally = new Ally($target, $defPlayer);
         if($ally->HasBounty()) {
           AddCurrentTurnEffect("7171636330", $defPlayer, "PLAY", $ally->UniqueID());
-          UpdateLinkAttack();
         }
       }
       break;
@@ -1672,6 +1671,17 @@ function AllyCardDiscarded($player, $discardedID) {
         break;
       default: break;
     }
+  }
+}
+
+function UpgradeLeftPlay($cardID, $player, $index) {
+  switch($cardID) {
+    case "8055390529"://Traitorous
+      $allies = &GetAllies($player);
+      $owner = $allies[$index + 11];
+      if($player != $owner) AllyTakeControl($owner, $index);
+      break;
+    default: break;
   }
 }
 

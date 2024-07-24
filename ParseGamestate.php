@@ -33,9 +33,9 @@ function ParseGamestate($useRedis = false)
   global $p1ClassState, $p1CharacterEffects, $p1Material, $p1CardStats, $p1TurnStats, $p1Allies, $p1Permanents, $p1Settings;
   global $p2Hand, $p2Deck, $p2CharEquip, $p2Resources, $p2Arsenal, $p2Items, $p2Auras, $p2Discard, $p2Pitch, $p2Banish;
   global $p2ClassState, $p2CharacterEffects, $p2Material, $p2CardStats, $p2TurnStats, $p2Allies, $p2Permanents, $p2Settings;
-  global $landmarks, $winner, $firstPlayer, $currentPlayer, $currentRound, $turn, $actionPoints, $combatChain, $combatChainState;
+  global $landmarks, $winner, $firstPlayer, $currentPlayer, $currentRound, $turn, $actionPoints, $attackState;
   global $currentTurnEffects, $currentTurnEffectsFromCombat, $nextTurnEffects, $decisionQueue, $dqVars, $dqState;
-  global $layers, $layerPriority, $mainPlayer, $defPlayer, $lastPlayed, $chainLinks, $chainLinkSummary, $p1Key, $p2Key;
+  global $layers, $layerPriority, $mainPlayer, $defPlayer, $lastPlayed, $p1Key, $p2Key;
   global $permanentUniqueIDCounter, $inGameStatus, $animations, $currentPlayerActivity;
   global $p1TotalTime, $p2TotalTime, $lastUpdateTime, $roguelikeGameID, $events, $lastUpdate, $EffectContext;
   global $mainPlayerGamestateStillBuilt, $mpgBuiltFor, $myStateBuiltFor, $playerID, $filename;
@@ -129,8 +129,8 @@ function ParseGamestate($useRedis = false)
   $currentRound= trim($gamestateContent[41]);
   $turn = GetStringArray($gamestateContent[42]);
   $actionPoints = trim($gamestateContent[43]);
-  $combatChain = GetStringArray($gamestateContent[44]);
-  $combatChainState = GetStringArray($gamestateContent[45]);
+  //44 unused
+  $attackState = GetStringArray($gamestateContent[45]);
   $currentTurnEffects = GetStringArray($gamestateContent[46]);
   $currentTurnEffectsFromCombat = GetStringArray($gamestateContent[47]);
   $nextTurnEffects = GetStringArray($gamestateContent[48]);
@@ -142,29 +142,23 @@ function ParseGamestate($useRedis = false)
   $mainPlayer = trim($gamestateContent[54]);
   $defPlayer = $mainPlayer == 1 ? 2 : 1;
   $lastPlayed = GetStringArray($gamestateContent[55]);
-  $numChainLinks = trim($gamestateContent[56]);
-  $chainLinks = array();
-  for ($i = 0; $i < $numChainLinks; ++$i) {
-    $chainLink = GetStringArray($gamestateContent[57+$i]);
-    $chainLinks[] = $chainLink;
-  }
-  $chainLinkSummary = GetStringArray($gamestateContent[57+$numChainLinks]);
-  $p1Key = trim($gamestateContent[58+$numChainLinks]);
-  $p2Key = trim($gamestateContent[59+$numChainLinks]);
-  $permanentUniqueIDCounter = trim($gamestateContent[60+$numChainLinks]);
-  $inGameStatus = trim($gamestateContent[61+$numChainLinks]); //Game status -- 0 = START, 1 = PLAY, 2 = OVER
-  $animations = GetStringArray($gamestateContent[62+$numChainLinks]); //Animations
-  $currentPlayerActivity = trim($gamestateContent[63+$numChainLinks]); //Current Player activity status -- 0 = active, 2 = inactive
-  //64 + numChainLinks unused
-  //65 + numChainLinks unused
-  $p1TotalTime = trim($gamestateContent[66+$numChainLinks]); //Player 1 total time
-  $p2TotalTime = trim($gamestateContent[67+$numChainLinks]); //Player 2 total time
-  $lastUpdateTime = trim($gamestateContent[68+$numChainLinks]); //Last update time
-  $roguelikeGameID = trim($gamestateContent[69+$numChainLinks]); //Roguelike game id
-  $events = GetStringArray($gamestateContent[70+$numChainLinks]); //Events
-  $EffectContext = trim($gamestateContent[71+$numChainLinks]); //What update number the gamestate is for
-  $initiativePlayer = trim($gamestateContent[72+$numChainLinks]); //The player that has initiative
-  $initiativeTaken = trim($gamestateContent[73+$numChainLinks]); //If initiative is taken yet
+  //57 unused
+  $p1Key = trim($gamestateContent[58]);
+  $p2Key = trim($gamestateContent[59]);
+  $permanentUniqueIDCounter = trim($gamestateContent[60]);
+  $inGameStatus = trim($gamestateContent[61]); //Game status -- 0 = START, 1 = PLAY, 2 = OVER
+  $animations = GetStringArray($gamestateContent[62]); //Animations
+  $currentPlayerActivity = trim($gamestateContent[63]); //Current Player activity status -- 0 = active, 2 = inactive
+  //64 unused
+  //65 unused
+  $p1TotalTime = trim($gamestateContent[66]); //Player 1 total time
+  $p2TotalTime = trim($gamestateContent[67]); //Player 2 total time
+  $lastUpdateTime = trim($gamestateContent[68]); //Last update time
+  $roguelikeGameID = trim($gamestateContent[69]); //Roguelike game id
+  $events = GetStringArray($gamestateContent[70]); //Events
+  $EffectContext = trim($gamestateContent[71]); //What update number the gamestate is for
+  $initiativePlayer = trim($gamestateContent[72]); //The player that has initiative
+  $initiativeTaken = trim($gamestateContent[73]); //If initiative is taken yet
 
   fclose($handler);
   BuildMyGamestate($playerID);

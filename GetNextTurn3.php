@@ -223,61 +223,20 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
   $response->MyPlaymat = (IsColorblindMode($playerID) ? 0 : GetPlaymat($playerID));
   $response->TheirPlaymat = (IsColorblindMode($playerID) ? 0 : GetPlaymat($otherPlayer));
 
-  //Display active chain link
-  $activeChainLink = new stdClass();
-  $combatChainReactions = array();
-  for ($i = 0; $i < count($combatChain); $i += CombatChainPieces()) {
-    // vars for active chain link: Is there an action?
-    $action = $currentPlayer == $playerID && $turn[0] != "P" && $currentPlayer == $combatChain[$i + 1] &&
-      AbilityPlayableFromCombatChain($combatChain[$i]) &&
-      IsPlayable($combatChain[$i], $turn[0], "PLAY", $i) ? 21 : 0;
-
+  //Display ongoing attack
+  $ongoingAttack = new stdClass();
+  if(AttackIsOngoing()){
     $borderColor = $action == 21 ? 1 : null;
-    // $borderColor = $combatChain[$i + 1] == $playerID ? 1 : 2;
-    $countersMap = new stdClass();
-
-    if ($i == 0) {
-      $activeChainLink->attackingCard = JSONRenderedCard(
-        cardNumber: $combatChain[$i],
-        controller: $combatChain[$i + 1],
-        action: $action,
-        actionDataOverride: '0',
-        borderColor: $borderColor,
-        countersMap: $countersMap,
-      );
-      continue;
-    }
-    $combatChainReactions[] = JSONRenderedCard(
-      cardNumber: $combatChain[$i],
-      controller: $combatChain[$i+1],
-      action: $action,
-      actionDataOverride: strval($i),
+    
+    $ongoingAttack->attackingCard = JSONRenderedCard(
+      cardNumber: AttackerCardID(),
+      controller: $mainPlayer,
+      actionDataOverride: '0',
       borderColor: $borderColor,
-      countersMap: $countersMap,
     );
   }
-  $activeChainLink->reactions = $combatChainReactions;
-  $activeChainLink->attackTarget = CardName(GetMZCard($mainPlayer, GetAttackTarget()));
-  $activeChainLink->damagePrevention = GetDamagePrevention($defPlayer);
-  $activeChainLink->goAgain = true;
-  $activeChainLink->dominate = CachedDominateActive();
-  $activeChainLink->overpower = CachedOverpowerActive();
-  if ($combatChainState[$CCS_RequiredEquipmentBlock] > NumEquipBlock()) $activeChainLink->numRequiredEquipBlock = $combatChainState[$CCS_RequiredEquipmentBlock];
-  $activeChainLink->fused = false;
-
-  // current chain link attack
-  $totalAttack = 0;
-  $totalDefense = 0;
-  if (count($combatChain) > 0) {
-    $chainAttackModifiers = [];
-    EvaluateCombatChain($totalAttack, $totalDefense, $chainAttackModifiers);
-  }
-  $activeChainLink->totalAttack = $totalAttack;
-
-  // current chain link defence
-  $activeChainLink->totalDefence = $totalDefense;
-
-  $response->activeChainLink = $activeChainLink;
+  $ongoingAttack->attackTarget = CardName(GetMZCard($mainPlayer, GetAttackTarget()));
+  $ongoingAttack->damagePrevention = GetDamagePrevention($defPlayer);
 
   //Display layer
   $layerObject = new stdClass;
@@ -359,7 +318,7 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
     if (CardType($theirCharacter[$i]) == "W") $atkCounters = $theirCharacter[$i + 3];
     if ($theirCharacter[$i + 2] > 0) $counters = $theirCharacter[$i + 2];
     $counters = $theirCharacter[$i + 1] != 0 ? $counters : 0;
-    $characterContents[] = JSONRenderedCard(cardNumber: $theirCharacter[$i], overlay: ($theirCharacter[$i+1] != 2 ? 1 : 0), counters: $counters, defCounters: $theirCharacter[$i+4], atkCounters: $atkCounters, controller: $otherPlayer, type: $type, sType: $sType, isFrozen: ($theirCharacter[$i+8] == 1), onChain: ($theirCharacter[$i+6] == 1), isBroken: ($theirCharacter[$i+1] == 0));
+    $characterContents[] = JSONRenderedCard(cardNumber: $theirCharacter[$i], overlay: ($theirCharacter[$i+1] != 2 ? 1 : 0), counters: $counters, defCounters: $theirCharacter[$i+4], atkCounters: $atkCounters, controller: $otherPlayer, type: $type, sType: $sType, isFrozen: ($theirCharacter[$i+8] == 1), isAttack: ($theirCharacter[$i+6] == 1), isBroken: ($theirCharacter[$i+1] == 0));
   }
   $response->opponentEquipment = $characterContents;
 
@@ -504,14 +463,6 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
     }
   }
   $response->playerArse = $myArse;
-
-  // Chain Links, how many are there and do they do things?
-  $chainLinkOutput = array();
-  for ($i = 0; $i < count($chainLinks); ++$i) {
-    $damage = $chainLinkSummary[$i * ChainLinkSummaryPieces()];
-    $chainLinkOutput[] = $damage > 0 ? "hit" : "no-hit";
-  }
-  $response->combatChainLinks = $chainLinkOutput;
 
   // their allies
   $theirAlliesOutput = array();
@@ -872,8 +823,6 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
       else if ($option[0] == "MYRESOURCES") $source = &GetMemory($playerID);
       else if ($option[0] == "THEIRRESOURCES") $source = &GetMemory($playerID == 1 ? 2 : 1);
       else if ($option[0] == "LANDMARK") $source = $landmarks;
-      else if ($option[0] == "CC") $source = $combatChain;
-      else if ($option[0] == "COMBATCHAINLINK") $source = $combatChain;
 
       $counters = 0;
       $lifeCounters = 0;
@@ -881,7 +830,7 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
       $atkCounters = 0;
       $label = "";
 
-      if (($option[0] == "MYALLY" || $option[0] == "THEIRALLY" || $option[0] == "THEIRAURAS") && $option[1] == $combatChainState[$CCS_WeaponIndex]) {
+      if (($option[0] == "MYALLY" || $option[0] == "THEIRALLY" || $option[0] == "THEIRAURAS") && $option[1] == $attackState[$AS_AttackerIndex]) {
         $label = "Attacker";
       }
 
@@ -912,7 +861,6 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
 
       if (str_starts_with($option[0], "MY")) $playerBorderColor = 1;
       else if (str_starts_with($option[0], "THEIR")) $playerBorderColor = 2;
-      else if ($option[0] == "CC") $playerBorderColor = ($combatChain[$index + 1] == $playerID ? 1 : 2);
       else if ($option[0] == "LAYER") {
         $playerBorderColor = ($layers[$index + 1] == $playerID ? 1 : 2);
       }
@@ -985,11 +933,6 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
   ) {
     $playerInputPopup->active = true;
     $playerInputPopup->popup = ChoosePopup($theirDiscard, $turn[2], 16, "Choose a card from your opponent's graveyard");
-  }
-
-  if (($turn[0] == "CHOOSECOMBATCHAIN" || $turn[0] == "MAYCHOOSECOMBATCHAIN") && $turn[1] == $playerID) {
-    $playerInputPopup->active = true;
-    $playerInputPopup->popup = ChoosePopup($combatChain, $turn[2], 16, "Choose a card from the combat chain", CombatChainPieces());
   }
 
   if ($turn[0] == "CHOOSECHARACTER" && $turn[1] == $playerID) {

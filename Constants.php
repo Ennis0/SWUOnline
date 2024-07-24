@@ -43,18 +43,6 @@ function BanishPieces()
 }
 
 //0 - Card ID
-//1 - Player
-//2 - From
-//3 - Resources Paid
-//4 - Reprise Active? (Or other class effects?)
-//5 - Attack Modifier
-//6 - Defense Modifier
-function CombatChainPieces()
-{
-  return 7;
-}
-
-//0 - Card ID
 //1 - Status (2=ready, 1=unavailable, 0=destroyed)
 //2 - Num counters
 //3 - Num attack counters
@@ -153,28 +141,6 @@ function LayerPieces()
 function LandmarkPieces()
 {
   return 2;
-}
-
-//0 - Card ID
-//1 - Player ID
-//2 - Still on chain? 1 = yes, 0 = no
-//3 - From
-//4 - Attack Modifier
-//5 - Defense Modifier
-function ChainLinksPieces()
-{
-  return 6;
-}
-
-//0 - Damage Dealt
-//1 - Total Attack
-//2 - Talents
-//3 - Class
-//4 - List of names
-//5 - Hit on link
-function ChainLinkSummaryPieces()
-{
-  return 6;
 }
 
 function DecisionQueuePieces()
@@ -281,171 +247,30 @@ function SetAfterPlayedBy($player, $cardID)
 }
 
 
-//Combat Chain State (State for the current combat chain)
-$CCS_CurrentAttackGainedGoAgain = 0;
-$CCS_WeaponIndex = 1;
-$CCS_IsAmbush = 2;
-$CCS_NumHits = 3;//Deprecated -- use HitsInCombatChain() or NumAttacksHit() instead
-$CCS_DamageDealt = 4;
-$CCS_HitsInRow = 5;//Deprecated -- use HitsInRow() instead
-$CCS_HitsWithWeapon = 6;
-$CCS_GoesWhereAfterLinkResolves = 7;
-$CCS_AttackPlayedFrom = 8;
-$CCS_ChainAttackBuff = 9;//Deprecated -- Use persistent combat effect with RemoveEffectsOnChainClose instead
-$CCS_ChainLinkHitEffectsPrevented = 10;
-$CCS_NumBoosted = 11;
-$CCS_NextBoostBuff = 12;//Deprecated -- use $CCS_IsBoosted now.
-$CCS_AttackFused = 13;
-$CCS_AttackTotalDamage = 14;//Deprecated -- use chain link summary instead, it has all of them
-$CCS_NumChainLinks = 15;//Deprecated -- use NumChainLinks() instead
-$CCS_AttackTarget = 16;
-$CCS_LinkTotalAttack = 17;
-$CCS_LinkBaseAttack = 18;
-$CCS_BaseAttackDefenseMax = 19;
-$CCS_ResourceCostDefenseMin = 20;
-$CCS_AfterLinkLayers = 21;
-$CCS_CachedTotalAttack = 22;
-$CCS_CachedTotalBlock = 23;
-$CCS_CombatDamageReplaced = 24; //CR 6.5.3, CR 6.5.4 (CR 2.0)
-$CCS_AttackUniqueID = 25;
-$CCS_RequiredEquipmentBlock = 26;
-$CCS_CachedDominateActive = 27;
-$CCS_CachedNumBlockedFromHand = 28;
-$CCS_IsBoosted = 29;
-$CCS_AttackTargetUID = 30;
-$CCS_CachedOverpowerActive = 31;
-$CSS_CachedNumActionBlocked = 32;
-$CCS_CachedNumDefendedFromHand = 33;
-$CCS_HitThisLink = 34;
-$CCS_CantAttackBase = 35;
+//Attack State(data pertaining to an ongoing attack)
+$AS_AttackerIndex = 0;
+$AS_IsAmbush = 1;
+$AS_DamageDealt = 2;
+$AS_AttackTarget = 3;
+$AS_AfterAttackLayers = 4;
+$AS_AttackerUniqueID = 5;
+$AS_AttackTargetUID = 6;
+$AS_CantAttackBase = 7;
 
-function ResetCombatChainState()
+function ResetAttackState()
 {
-  global $combatChainState, $CCS_CurrentAttackGainedGoAgain, $CCS_WeaponIndex, $CCS_DamageDealt;
-  global $CCS_HitsWithWeapon, $CCS_GoesWhereAfterLinkResolves, $CCS_AttackPlayedFrom, $CCS_ChainLinkHitEffectsPrevented;
-  global $CCS_NumBoosted, $CCS_AttackFused, $CCS_AttackTotalDamage, $CCS_AttackTarget;
-  global $CCS_LinkTotalAttack, $CCS_LinkBaseAttack, $CCS_BaseAttackDefenseMax, $CCS_ResourceCostDefenseMin, $CCS_AfterLinkLayers;
-  global $CCS_CachedTotalAttack, $CCS_CachedTotalBlock, $CCS_CombatDamageReplaced, $CCS_AttackUniqueID, $CCS_RequiredEquipmentBlock;
-  global $mainPlayer, $defPlayer, $CCS_CachedDominateActive, $CCS_CachedNumBlockedFromHand, $CCS_IsBoosted, $CCS_AttackTargetUID, $CCS_CachedOverpowerActive, $CSS_CachedNumActionBlocked;
-  global $layers, $chainLinks, $chainLinkSummary, $CCS_CachedNumDefendedFromHand, $CCS_HitThisLink, $CCS_IsAmbush, $CCS_CantAttackBase;
+  global $attackState, $AS_AttackerIndex, $AS_IsAmbush, $AS_DamageDealt, $AS_AttackTarget, $AS_AfterAttackLayers, $AS_AttackerUniqueID;
+  global $AS_AttackTargetUID, $AS_CantAttackBase;
+  global $mainPlayer, $defPlayer;
 
-  $combatChainState[$CCS_CurrentAttackGainedGoAgain] = 0;
-  $combatChainState[$CCS_WeaponIndex] = -1;
-  $combatChainState[$CCS_IsAmbush] = 0;
-  $combatChainState[$CCS_DamageDealt] = 0;
-  $combatChainState[$CCS_HitsWithWeapon] = 0;
-  $combatChainState[$CCS_GoesWhereAfterLinkResolves] = "GY";
-  $combatChainState[$CCS_AttackPlayedFrom] = "NA";
-  $combatChainState[$CCS_ChainLinkHitEffectsPrevented] = 0;
-  $combatChainState[$CCS_NumBoosted] = 0;
-  $combatChainState[$CCS_AttackFused] = 0;
-  $combatChainState[$CCS_AttackTotalDamage] = 0;
-  $combatChainState[$CCS_AttackTarget] = "NA";
-  $combatChainState[$CCS_LinkTotalAttack] = 0;
-  $combatChainState[$CCS_LinkBaseAttack] = 0;
-  $combatChainState[$CCS_BaseAttackDefenseMax] = -1;
-  $combatChainState[$CCS_ResourceCostDefenseMin] = -1;
-  $combatChainState[$CCS_AfterLinkLayers] = "NA";
-  $combatChainState[$CCS_CachedTotalAttack] = 0;
-  $combatChainState[$CCS_CachedTotalBlock] = 0;
-  $combatChainState[$CCS_CombatDamageReplaced] = 0;
-  $combatChainState[$CCS_AttackUniqueID] = -1;
-  $combatChainState[$CCS_RequiredEquipmentBlock] = 0;
-  $combatChainState[$CCS_CachedDominateActive] = 0;
-  $combatChainState[$CCS_CachedNumBlockedFromHand] = 0;
-  $combatChainState[$CCS_IsBoosted] = 0;
-  $combatChainState[$CCS_AttackTargetUID] = "-";
-  $combatChainState[$CCS_CachedOverpowerActive] = 0;
-  $combatChainState[$CSS_CachedNumActionBlocked] = 0;
-  $combatChainState[$CCS_CachedNumDefendedFromHand] = 0;
-  $combatChainState[$CCS_HitThisLink] = 0;
-  $combatChainState[$CCS_CantAttackBase] = 0;
-  $defCharacter = &GetPlayerCharacter($defPlayer);
-  for ($i = 0; $i < count($defCharacter); $i += CharacterPieces()) {
-    $defCharacter[$i + 6] = 0;
-  }
-  for ($i = 0; $i < count($chainLinks); ++$i) {
-    for ($j = 0; $j < count($chainLinks[$i]); $j += ChainLinksPieces()) {
-      if ($chainLinks[$i][$j + 2] != "1") continue;
-      $cardType = CardType($chainLinks[$i][$j]);
-      if ($cardType != "AA" && $cardType != "DR" && $cardType != "AR" && $cardType != "A") continue;
-      $goesWhere = GoesWhereAfterResolving($chainLinks[$i][$j], "CHAINCLOSING", $chainLinks[$i][$j + 1], $chainLinks[$i][$j + 3]);
-      switch ($goesWhere) {
-        case "GY":
-          AddGraveyard($chainLinks[$i][$j], $chainLinks[$i][$j + 1], "CC");
-          break;
-        case "BOTDECK":
-          AddBottomDeck($chainLinks[$i][$j], $mainPlayer, "CC");
-          break;
-        case "HAND":
-          AddPlayerHand($chainLinks[$i][$j], $mainPlayer, "CC");
-          break;
-        case "SOUL":
-          AddSoul($chainLinks[$i][$j], $chainLinks[$i][$j + 1], "CC");
-          break;
-        default:
-          break;
-      }
-    }
-  }
-  UnsetCombatChainBanish();
-  CombatChainClosedCharacterEffects();
-  CombatChainClosedMainCharacterEffects();
-  RemoveEffectsOnChainClose();
-  $chainLinks = [];
-  $chainLinkSummary = [];
-}
-
-function AttackReplaced()
-{
-  global $combatChainState;
-  global $CCS_CurrentAttackGainedGoAgain, $CCS_GoesWhereAfterLinkResolves, $CCS_AttackPlayedFrom, $CCS_LinkBaseAttack;
-  $combatChainState[$CCS_CurrentAttackGainedGoAgain] = 0;
-  $combatChainState[$CCS_GoesWhereAfterLinkResolves] = "GY";
-  $combatChainState[$CCS_AttackPlayedFrom] = "BANISH";//Right now only Uzuri can do this
-  $combatChainState[$CCS_LinkBaseAttack] = 0;
-  CleanUpCombatEffects(true);
-}
-
-function ResetChainLinkState()
-{
-  global $combatChainState, $CCS_CurrentAttackGainedGoAgain, $CCS_WeaponIndex, $CCS_IsAmbush, $CCS_DamageDealt, $CCS_GoesWhereAfterLinkResolves;
-  global $CCS_AttackPlayedFrom, $CCS_ChainLinkHitEffectsPrevented, $CCS_AttackFused, $CCS_AttackTotalDamage, $CCS_AttackTarget;
-  global $CCS_LinkTotalAttack, $CCS_LinkBaseAttack, $CCS_BaseAttackDefenseMax, $CCS_ResourceCostDefenseMin, $CCS_AfterLinkLayers;
-  global $CCS_CachedTotalAttack, $CCS_CachedTotalBlock, $CCS_CombatDamageReplaced, $CCS_AttackUniqueID, $CCS_RequiredEquipmentBlock;
-  global $CCS_CachedDominateActive, $CCS_CachedNumBlockedFromHand, $CCS_IsBoosted, $CCS_AttackTargetUID, $CCS_CachedOverpowerActive, $CSS_CachedNumActionBlocked;
-  global $CCS_CachedNumDefendedFromHand, $CCS_HitThisLink, $CCS_CantAttackBase;
-  WriteLog("The chain link was closed.");
-  $combatChainState[$CCS_CurrentAttackGainedGoAgain] = 0;
-  $combatChainState[$CCS_WeaponIndex] = -1;
-  $combatChainState[$CCS_IsAmbush] = 0;
-  $combatChainState[$CCS_DamageDealt] = 0;
-  $combatChainState[$CCS_GoesWhereAfterLinkResolves] = "GY";
-  $combatChainState[$CCS_AttackPlayedFrom] = "NA";
-  $combatChainState[$CCS_ChainLinkHitEffectsPrevented] = 0;
-  $combatChainState[$CCS_AttackFused] = 0;
-  $combatChainState[$CCS_AttackTotalDamage] = 0;
-  $combatChainState[$CCS_AttackTarget] = "NA";
-  $combatChainState[$CCS_LinkTotalAttack] = 0;
-  $combatChainState[$CCS_LinkBaseAttack] = 0;
-  $combatChainState[$CCS_BaseAttackDefenseMax] = -1;
-  $combatChainState[$CCS_ResourceCostDefenseMin] = -1;
-  $combatChainState[$CCS_AfterLinkLayers] = "NA";
-  $combatChainState[$CCS_CachedTotalAttack] = 0;
-  $combatChainState[$CCS_CachedTotalBlock] = 0;
-  $combatChainState[$CCS_CombatDamageReplaced] = 0;
-  $combatChainState[$CCS_AttackUniqueID] = -1;
-  $combatChainState[$CCS_RequiredEquipmentBlock] = 0;
-  $combatChainState[$CCS_CachedDominateActive] = 0;
-  $combatChainState[$CCS_CachedNumBlockedFromHand] = 0;
-  $combatChainState[$CCS_IsBoosted] = 0;
-  $combatChainState[$CCS_AttackTargetUID] = "-";
-  $combatChainState[$CCS_CachedOverpowerActive] = 0;
-  $combatChainState[$CSS_CachedNumActionBlocked] = 0;
-  $combatChainState[$CCS_CachedNumDefendedFromHand] = 0;
-  $combatChainState[$CCS_HitThisLink] = 0;
-  $combatChainState[$CCS_CantAttackBase] = 0;
-  UnsetChainLinkBanish();
+  $attackState[$AS_AttackerIndex] = -1;
+  $attackState[$AS_IsAmbush] = 0;
+  $attackState[$AS_DamageDealt] = 0;
+  $attackState[$AS_AttackTarget] = "NA";
+  $attackState[$AS_AfterAttackLayers] = "NA";
+  $attackState[$AS_AttackerUniqueID] = -1;
+  $attackState[$AS_AttackTargetUID] = "-";
+  $attackState[$AS_CantAttackBase] = 0;
 }
 
 function ResetClassState($player)
@@ -540,41 +365,41 @@ function ResetCharacterEffects()
 
 function SetAttackTarget($mzTarget)
 {
-  global $combatChainState, $CCS_AttackTarget, $CCS_AttackTargetUID, $defPlayer, $combatChain;
+  global $attackState, $AS_AttackTarget, $AS_AttackTargetUID, $defPlayer;
   if($mzTarget == "") return;
   $mzArr = explode("-", $mzTarget);
-  $combatChainState[$CCS_AttackTarget] = $mzTarget;
-  $combatChainState[$CCS_AttackTargetUID] = MZGetUniqueID($mzTarget, $defPlayer);
+  $attackState[$AS_AttackTarget] = $mzTarget;
+  $attackState[$AS_AttackTargetUID] = MZGetUniqueID($mzTarget, $defPlayer);
 }
 
 function UpdateAttacker() {
-  global $combatChainState, $CCS_WeaponIndex, $CCS_AttackUniqueID, $mainPlayer;
-  $index = SearchAlliesForUniqueID($combatChainState[$CCS_AttackUniqueID], $mainPlayer);
-  $combatChainState[$CCS_WeaponIndex] = $index == -1 ? $combatChainState[$CCS_WeaponIndex] : $index;
+  global $attackState, $AS_AttackerIndex, $AS_AttackerUniqueID, $mainPlayer;
+  $index = SearchAlliesForUniqueID($attackState[$AS_AttackerUniqueID], $mainPlayer);
+  $attackState[$AS_AttackerIndex] = $index == -1 ? $attackState[$AS_AttackerIndex] : $index;
 }
 
 function UpdateAttackTarget() {
-  global $combatChainState, $CCS_AttackTarget, $CCS_AttackTargetUID, $defPlayer;
-  $mzArr = explode("-", $combatChainState[$CCS_AttackTarget]);
+  global $attackState, $AS_AttackTarget, $AS_AttackTargetUID, $defPlayer;
+  $mzArr = explode("-", $attackState[$AS_AttackTarget]);
   if($mzArr[0] = "THEIRCHAR") return;
-  $index = SearchAlliesForUniqueID($combatChainState[$CCS_AttackTargetUID], $defPlayer);
-  $combatChainState[$CCS_AttackTarget] = $index == -1 ? "NA" : $mzArr[0] . "-" . $index;
+  $index = SearchAlliesForUniqueID($attackState[$AS_AttackTargetUID], $defPlayer);
+  $attackState[$AS_AttackTarget] = $index == -1 ? "NA" : $mzArr[0] . "-" . $index;
 }
 
 function GetAttackTarget()
 {
-  global $combatChainState, $CCS_AttackTarget, $CCS_AttackTargetUID, $defPlayer;
-  $uid = $combatChainState[$CCS_AttackTargetUID];
-  if($uid == "-") return $combatChainState[$CCS_AttackTarget];
-  $mzArr = explode("-", $combatChainState[$CCS_AttackTarget]);
+  global $attackState, $AS_AttackTarget, $AS_AttackTargetUID, $defPlayer;
+  $uid = $attackState[$AS_AttackTargetUID];
+  if($uid == "-") return $attackState[$AS_AttackTarget];
+  $mzArr = explode("-", $attackState[$AS_AttackTarget]);
   $index = SearchZoneForUniqueID($uid, $defPlayer, $mzArr[0]);
   return $mzArr[0] . "-" . $index;
 }
 
 function ClearAttackTarget() {
-  global $combatChainState, $CCS_AttackTarget, $CCS_AttackTargetUID;
-  $combatChainState[$CCS_AttackTarget] = "NA";
-  $combatChainState[$CCS_AttackTargetUID] = "-";
+  global $attackState, $AS_AttackTarget, $AS_AttackTargetUID;
+  $attackState[$AS_AttackTarget] = "NA";
+  $attackState[$AS_AttackTargetUID] = "-";
 }
 
 function GetDamagePrevention($player)
@@ -585,8 +410,8 @@ function GetDamagePrevention($player)
 
 function AttackPlayedFrom()
 {
-  global $CCS_AttackPlayedFrom, $combatChainState;
-  return $combatChainState[$CCS_AttackPlayedFrom];
+  global $AS_AttackPlayedFrom, $attackState;
+  return $attackState[$AS_AttackPlayedFrom];
 }
 
 function CCOffset($piece)

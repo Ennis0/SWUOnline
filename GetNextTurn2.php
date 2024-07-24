@@ -430,8 +430,8 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
           return $captions[$layer] ?? ""; // Return the caption if it exists, otherwise return an empty string
       }
   
-      // Check if the first layer is an attack or weapon, and if so, get and display the attack target
-      if (CardType($layers[0]) == "AA" || IsWeapon($layers[0])) {
+      // Check if the first layer is an attack, and if so, get and display the attack target
+      if (CardType($layers[0]) == "AA") {
           $attackTarget = GetAttackTarget();
           if ($attackTarget != "NA") {
               $content .= "&nbsp;Attack Target: " . GetMZCardLink($defPlayer, $attackTarget);
@@ -641,23 +641,12 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
       else if ($option[0] == "THEIRHAND") $source = $theirHand;
       else if ($option[0] == "MYDISCARD") $source = $myDiscard;
       else if ($option[0] == "THEIRDISCARD") $source = $theirDiscard;
-      else if ($option[0] == "MYBANISH") $source = $myBanish;
-      else if ($option[0] == "THEIRBANISH") $source = $theirBanish;
       else if ($option[0] == "MYALLY") $source = $myAllies;
       else if ($option[0] == "THEIRALLY") $source = $theirAllies;
-      else if ($option[0] == "MYARS") $source = $myArsenal;
-      else if ($option[0] == "THEIRARS") $source = $theirArsenal;
-      else if ($option[0] == "MYPITCH") $source = $myPitch;
-      else if ($option[0] == "THEIRPITCH") $source = $theirPitch;
       else if ($option[0] == "MYDECK") $source = $myDeck;
       else if ($option[0] == "THEIRDECK") $source = $theirDeck;
-      else if ($option[0] == "MYMATERIAL") $source = $myMaterial;
-      else if ($option[0] == "THEIRMATERIAL") $source = $theirMaterial;
       else if ($option[0] == "MYRESOURCES") $source = &GetMemory($playerID);
       else if ($option[0] == "THEIRRESOURCES") $source = &GetMemory($playerID == 1 ? 2 : 1);
-      else if ($option[0] == "LANDMARK") $source = $landmarks;
-      else if ($option[0] == "CC") $source = $combatChain;
-      else if ($option[0] == "COMBATCHAINLINK") $source = $combatChain;
 
       if($option[0] != "MYCHAR" && $option[0] != "THEIRCHAR" && $option[0] != "MYALLY" && $option[0] != "THEIRALLY" && $option[0] != "MYHAND") $mzChooseFromPlay = false;
 
@@ -673,7 +662,6 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
 
       if (str_starts_with($option[0], "MY")) $playerBorderColor = 1;
       else if (str_starts_with($option[0], "THEIR")) $playerBorderColor = 2;
-      else if ($option[0] == "CC") $playerBorderColor = ($combatChain[$index + 1] == $playerID ? 1 : 2);
       else if ($option[0] == "LAYER") {
         $playerBorderColor = ($layers[$index + 1] == $playerID ? 1 : 2);
       }
@@ -709,10 +697,6 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
     ChoosePopup($myDeck, $turn[2], 11, "Choose a card from your deck");
   }
 
-  if ($turn[0] == "CHOOSEBANISH" && $turn[1] == $playerID) {
-    ChoosePopup($myBanish, $turn[2], 16, "Choose a card from your banish", BanishPieces());
-  }
-
   if (($turn[0] == "CHOOSETHEIRHAND") && $turn[1] == $playerID) {
     ChoosePopup($theirHand, $turn[2], 16, "Choose a card from your opponent's hand");
   }
@@ -725,18 +709,6 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
 
   if (($turn[0] == "MAYCHOOSETHEIRDISCARD") && $turn[1] == $playerID) {
     ChoosePopup($theirDiscard, $turn[2], 16, "Choose a card from your opponent's graveyard", zoneSize:DiscardPieces());
-  }
-
-  if (($turn[0] == "CHOOSECOMBATCHAIN" || $turn[0] == "MAYCHOOSECOMBATCHAIN") && $turn[1] == $playerID) {
-    ChoosePopup($combatChain, $turn[2], 16, "Choose a card from the combat chain", CombatChainPieces());
-  }
-
-  if ($turn[0] == "CHOOSECHARACTER" && $turn[1] == $playerID) {
-    ChoosePopup($myCharacter, $turn[2], 16, "Choose a card from your character/equipment", CharacterPieces());
-  }
-
-  if ($turn[0] == "CHOOSETHEIRCHARACTER" && $turn[1] == $playerID) {
-    ChoosePopup($theirCharacter, $turn[2], 16, "Choose a card from your opponent character/equipment", CharacterPieces());
   }
 
   if (($turn[0] == "MULTICHOOSETHEIRDISCARD" || $turn[0] == "MULTICHOOSEDISCARD" || $turn[0] == "MULTICHOOSEHAND" || $turn[0] == "MAYMULTICHOOSEHAND" || $turn[0] == "MULTICHOOSEUNIT" || $turn[0] == "MULTICHOOSETHEIRUNIT" || $turn[0] == "MULTICHOOSEDECK" || $turn[0] == "MULTICHOOSETEXT" || $turn[0] == "MAYMULTICHOOSETEXT" || $turn[0] == "MULTICHOOSETHEIRDECK" || $turn[0] == "MAYMULTICHOOSEAURAS") && $currentPlayer == $playerID) {
@@ -890,7 +862,7 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
       $epicActionUsed = $theirCharacter[$i + 2] > 0 ? 1 : 0;
     }
     if ($characterContents != "") $characterContents .= "|";
-    $characterContents .= ClientRenderedCard(cardNumber: $theirCharacter[$i], action:$action, actionDataOverride:$actionDataOverride, borderColor:$border, overlay: $overlay, counters: $counters, defCounters: 0, atkCounters: $atkCounters, controller: $otherPlayer, type: $type, sType: $sType, isFrozen: ($theirCharacter[$i + 8] == 1), onChain: ($theirCharacter[$i + 6] == 1), isBroken: ($theirCharacter[$i + 1] == 0), rotate:0, landscape:1, epicActionUsed: $epicActionUsed);
+    $characterContents .= ClientRenderedCard(cardNumber: $theirCharacter[$i], action:$action, actionDataOverride:$actionDataOverride, borderColor:$border, overlay: $overlay, counters: $counters, defCounters: 0, atkCounters: $atkCounters, controller: $otherPlayer, type: $type, sType: $sType, isFrozen: ($theirCharacter[$i + 8] == 1), isAttack: ($theirCharacter[$i + 6] == 1), isBroken: ($theirCharacter[$i + 1] == 0), rotate:0, landscape:1, epicActionUsed: $epicActionUsed);
   }
   echo ($characterContents);
 

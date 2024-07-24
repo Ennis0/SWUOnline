@@ -10,7 +10,6 @@ if (!IsGameNameValid($gameName)) {
 $playerID = $_GET["playerID"];
 $authKey = TryGet("authKey", "");
 $popupType = $_GET["popupType"];
-$chainLinkIndex = TryGet("chainLinkIndex", "");
 
 ob_start();
 include "./ParseGamestate.php";
@@ -98,31 +97,6 @@ switch ($popupType) {
   case "theirSoulPopup":
     echo (CreatePopup("theirSoulPopup", $theirSoul, 1, 0, "Opponent's Soul"));
     break;
-  case "chainLinkPopup":
-    $popupIndex = intval(($chainLinkIndex != "" ? $chainLinkIndex : $params[1]));
-    echo (CreatePopup("chainLinkPopup-" . $popupIndex, [], 1, 0, "Summary Chain Link " . $popupIndex + 1, 1, ChainLinkPopup($popupIndex), "./", false, false, "Total Damage Dealt: " . $chainLinkSummary[$popupIndex * ChainLinkSummaryPieces()]));
-    break;
   default:
     break;
-}
-
-function ChainLinkPopup($link)
-{
-  global $chainLinks, $cardSize, $playerID, $mainPlayer, $defPlayer;
-  $rv = "";
-  for ($i = 0; $i < count($chainLinks[$link]); $i += ChainLinksPieces()) {
-    if ($chainLinks[$link][$i + 1] == $mainPlayer && CardType($chainLinks[$link][$i]) != "AR")
-    {
-      $attackValue = AttackValue($chainLinks[$link][$i]) + $chainLinks[$link][$i + 4];
-    }
-    else $attackValue = 0;
-
-    if ($chainLinks[$link][$i + 1] == $defPlayer) $blockValue = BlockValue($chainLinks[$link][$i]) + $chainLinks[$link][$i + 5];
-    else $blockValue = 0;
-
-    $rv .= Card($chainLinks[$link][$i], "concat", $cardSize, 0, 1, 0, ($chainLinks[$link][$i + 1] == $playerID ? 1 : 2), 0, "", "", false, 0, $blockValue, $attackValue);
-    //$rv .= $chainLinks[$link][$i] . " ";
-
-  }
-  return $rv;
 }

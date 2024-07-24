@@ -210,12 +210,6 @@ function DestroyArsenal($player, $index=-1)
   return $cardIDs;
 }
 
-function SetCCAttackModifier($index, $amount)
-{
-  global $combatChain;
-  $combatChain[$index + 5] += $amount;
-}
-
 function AddMaterial($cardID, $player, $from)
 {
   global $currentPlayer, $mainPlayer, $mainPlayerGamestateStillBuilt;

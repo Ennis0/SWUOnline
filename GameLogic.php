@@ -2,31 +2,29 @@
 
 include "Search.php";
 include "CardLogic.php";
-include "AuraAbilities.php";
 include "ItemAbilities.php";
 include "AllyAbilities.php";
 include "PermanentAbilities.php";
 include "CharacterAbilities.php";
-include "WeaponLogic.php";
 include "MZLogic.php";
 include "Classes/Deck.php";
 include "Classes/Ally.php";
 include "DecisionQueue/DecisionQueueEffects.php";
 include "CurrentEffectAbilities.php";
-include "CombatChain.php";
+include "CombatAbilities.php";
 include_once "WriteLog.php";
 
 
 function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
 {
   global $redirectPath, $playerID, $gameName;
-  global $currentPlayer, $combatChain, $defPlayer;
-  global $combatChainState;
+  global $currentPlayer, $defPlayer;
+  global $attackState;
   global $defCharacter, $otherPlayer;
-  global $CS_NextNAACardGoAgain, $CCS_AttackTarget, $CS_NumLeftPlay;
+  global $CS_NextNAACardGoAgain, $AS_AttackTarget, $CS_NumLeftPlay;
   global $CS_LayerTarget, $dqVars, $mainPlayer, $lastPlayed, $dqState, $CS_AbilityIndex, $CS_CharacterIndex;
   global $CS_AdditionalCosts, $CS_AlluvionUsed, $CS_MaxQuellUsed, $CS_DamageDealt, $CS_ArcaneTargetsSelected, $inGameStatus;
-  global $CS_ArcaneDamageDealt, $MakeStartTurnBackup, $CCS_AttackTargetUID, $chainLinkSummary, $chainLinks, $MakeStartGameBackup;
+  global $CS_ArcaneDamageDealt, $MakeStartTurnBackup, $AS_AttackTargetUID, $MakeStartGameBackup;
   $rv = "";
   switch($phase) {
     case "FINDINDICES":
@@ -42,7 +40,6 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
         case "DAMAGEPREVENTION":
           $rv = GetDamagePreventionIndices($player);
           break;
-        case "DAMAGEPREVENTIONTARGET": $rv = GetDamagePreventionTargetIndices(); break;
         case "DECK": $rv = SearchDeck($player); break;
         case "TOPDECK":
           $deck = &GetDeck($player);
@@ -112,13 +109,6 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
         //These are needed because MZ search doesn't have facedown parameter
         case "ARSENALDOWN": $rv = GetArsenalFaceDownIndices($player); break;
         case "ARSENALUP": $rv = GetArsenalFaceUpIndices($player); break;
-        case "ITEMSMAX": $rv = SearchItems($player, "", "", $subparam); break;
-        case "EQUIP": $rv = GetEquipmentIndices($player); break;
-        case "EQUIP0": $rv = GetEquipmentIndices($player, 0); break;
-        case "EQUIPCARD": $rv = FindCharacterIndex($player, $subparam); break;
-        case "EQUIPONCC": $rv = GetEquipmentIndices($player, onCombatChain:true); break;
-        case "CCAA": $rv = SearchCombatChainLink($player, "AA"); break;
-        case "CCDEFLESSX": $rv = SearchCombatChainLink($player, "", "", -1, -1, "", "", false, false, -1, false, -1, $subparam); break;
         case "HANDAAMAXCOST": $rv = SearchHand($player, "AA", "", $subparam); break;
         case "MYHANDAA": $rv = SearchHand($player, "AA"); break;
         case "MAINHAND":
@@ -139,7 +129,6 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
         case "GYCLASSAA": $rv = SearchDiscard($player, "AA", "", -1, -1, $subparam); break;
         case "GYCLASSNAA": $rv = SearchDiscard($player, "A", "", -1, -1, $subparam); break;
         case "GYCARD": $rv = SearchDiscardForCard($player, $subparam); break;
-        case "WEAPON": $rv = WeaponIndices($player, $player, $subparam); break;
         case "HEAVE": $rv = HeaveIndices(); break;
         case "AURACLASS": $rv = SearchAura($player, "", "", -1, -1, $subparam); break;
         case "DECKAURAMAXCOST": $rv = SearchDeck($player, "", "Aura", $subparam); break;
@@ -172,9 +161,6 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
         PlayAlly($lastResult, $player);
         PlayAbility($lastResult, "-", 0);
       }
-      else {
-        PlayAura($lastResult, $player);
-      }
       return $lastResult;
     case "DRAW":
       return Draw($player);
@@ -190,25 +176,6 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
         $mzIndices .= "BANISH-" . $index;
       }
       $dqState[5] = $mzIndices;
-      return $lastResult;
-    case "REMOVECOMBATCHAIN":
-      $cardID = $combatChain[$lastResult];
-      RemoveCombatChain($lastResult);
-      return $cardID;
-    case "COMBATCHAINPOWERMODIFIER":
-      CombatChainPowerModifier($lastResult, $parameter);
-      return $lastResult;
-    case "COMBATCHAINDEFENSEMODIFIER":
-      if($parameter < 0) {
-        $defense = BlockingCardDefense($lastResult);
-        if($parameter < $defense * -1) $parameter = $defense * -1;
-      }
-      $combatChain[$lastResult+6] += $parameter;
-      return $lastResult;
-    case "COMBATCHAINCHARACTERDEFENSEMODIFIER":
-      $character = &GetPlayerCharacter($player);
-      $index = FindCharacterIndex($player, $combatChain[$parameter]);
-      $character[$index + 4] += $lastResult;
       return $lastResult;
     case "REMOVEMYHAND":
       $hand = &GetHand($player);
@@ -274,16 +241,6 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
       }
       $hand = array_values($hand);
       return $cards;
-    case "DESTROYCHARACTER":
-      DestroyCharacter($player, $lastResult);
-      return $lastResult;
-    case "DESTROYEQUIPDEF0":
-      $character = &GetPlayerCharacter($defPlayer);
-      if(BlockValue($character[$lastResult]) + $character[$lastResult+4] <= 0) {
-        WriteLog(CardLink($character[$lastResult], $character[$lastResult]) . " was destroyed");
-        DestroyCharacter($defPlayer, $lastResult);
-      }
-      return "";
     case "CHARFLAGDESTROY":
       $character = &GetPlayerCharacter($player);
       $character[$parameter+7] = 1;
@@ -351,7 +308,6 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
         case "PLAYCARD": return MZPlayCard($player, $lastResult);
         case "ATTACK": return MZAttack($player, $lastResult);
         case "ADDHEALTH": MZAddHealth($player, $lastResult, count($parameterArr) > 1 ? $parameterArr[1] : 1); return $lastResult;
-        case "ENDCOMBAT": MZEndCombat($player, $lastResult); return $lastResult;
         case "HEALALLY":
           MZHealAlly($player, $lastResult, count($parameterArr) > 1 ? $parameterArr[1] : 1);
           return $lastResult;
@@ -373,7 +329,7 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
             $ally = new Ally($lastResult);
             $destroyed = $ally->DealDamage($parameterArr[1]);
             if($destroyed) {
-              if($isAttackTarget || $isAttacker) CloseCombatChain();
+              if($isAttackTarget || $isAttacker) CancelAttack();
               return "";
             }
           } else {
@@ -584,10 +540,6 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
       switch($from)
       {
         case "LastResult": $input = explode(",", $lastResult); for($i=0; $i<count($input); ++$i) $input[$i] = $input[$i] . "-" . $input[$i]; break;
-        case "CombatChain":
-          $lastResultArr = explode(",", $lastResult);
-          for($i=0; $i<count($lastResultArr); ++$i) $input[] = $combatChain[$lastResultArr[$i]+CCOffset($type)] . "-" . $lastResultArr[$i];
-          break;
         case "Deck":
           $lastResultArr = explode(",", $lastResult);
           $deck = &GetDeck($player);
@@ -758,9 +710,6 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
       }
       $deck = array_values($deck);
       return $cards;
-    case "PLAYAURA":
-      PlayAura($parameter, $player);
-      break;
     case "DESTROYALLY":
       DestroyAlly($player, $lastResult);
       break;
@@ -842,22 +791,18 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
       return "1";
     case "ADDCURRENTEFFECT":
       AddCurrentTurnEffect($parameter, $player);
-      UpdateLinkAttack();
       return $lastResult;
     case "REMOVECURRENTEFFECT":
       SearchCurrentTurnEffects($parameter, $player, true);
-      UpdateLinkAttack();
       return $lastResult;
     case "ADDCURRENTANDNEXTTURNEFFECT":
       AddCurrentTurnEffect($parameter, $player);
-      UpdateLinkAttack();
       AddNextTurnEffect($parameter, $player);
       return "1";
     case "ADDLIMITEDCURRENTEFFECT":
       $uniqueID = $lastResult;
       $params = explode(",", $parameter);
       AddCurrentTurnEffect($params[0], UnitUniqueIDController($uniqueID), $params[1], $uniqueID);
-      UpdateLinkAttack();
       return $lastResult;
     case "ADDLIMITEDNEXTTURNEFFECT":
       AddNextTurnEffect($parameter, $player, $lastResult);
@@ -988,11 +933,6 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
       $char = &GetPlayerCharacter($player);
       if($char[$parameter + 1] != 2) return "PASS";
       return 1;
-    case "ATTACKMODIFIER":
-      $amount = intval($parameter);
-      WriteLog($amount);
-      $combatChain[5] += $amount;
-      return $parameter;
     case "DEALDAMAGE":
       $target = (is_array($lastResult) ? $lastResult : explode("-", $lastResult));
       $targetPlayer = ($target[0] == "MYCHAR" || $target[0] == "MYALLY" ? $player : ($player == 1 ? 1 : 2));
@@ -1001,7 +941,6 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
       $source = $parameters[1];
       $type = $parameters[2];
       if($target[0] == "THEIRALLY" || $target[0] == "MYALLY") {
-        if($type == "COMBAT" && CriticalAmount($source) > 0) $damage *= 2;
         DealAllyDamage($targetPlayer, $target[1], $damage);
         return $damage;
       } else {
@@ -1019,7 +958,6 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
       if($type == "COMBAT")
       {
         if($source == "soO3hjaVfN" && SearchCurrentTurnEffects("soO3hjaVfN", $mainPlayer, true)) $damage *= 2;
-        if(CriticalAmount($source) > 0) $damage *= 2;
         $dqState[6] = $damage;
       }
       $damage = DealDamageAsync($player, $damage, $type, $source);
@@ -1111,7 +1049,7 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
       if(count($arsenal) > 0 && count($params) == 2) AddCurrentTurnEffect($params[0], $player, $params[1], $arsenal[count($arsenal) - ArsenalPieces() + 5]);
       return $lastResult;
     case "PROCESSATTACKTARGET":
-      $combatChainState[$CCS_AttackTarget] = $lastResult;
+      $attackState[$AS_AttackTarget] = $lastResult;
       $mzArr = explode("-", $lastResult);
       $zone = &GetMZZone($defPlayer, $mzArr[0]);
       $uid = "-";
@@ -1121,7 +1059,7 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
         case "MYAURAS": case "THEIRAURAS": $uid = $zone[$mzArr[1]+6]; break;
         default: break;
       }
-      $combatChainState[$CCS_AttackTargetUID] = $uid;
+      $attackState[$AS_AttackTargetUID] = $uid;
       WriteLog(GetMZCardLink($defPlayer, $lastResult) . " was chosen as the attack target");
       return 1;
     case "STARTTURNABILITIES":
@@ -1138,11 +1076,8 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
     case "RESUMEROUNDPASS":
       ResumeRoundPass();
       return 1;
-    case "ROLLDIE":
-      $roll = RollDie($player, true, $parameter == "1");
-      return $roll;
-    case "SETCOMBATCHAINSTATE":
-      $combatChainState[$parameter] = $lastResult;
+    case "SETATTACKSTATE":
+      $attackState[$parameter] = $lastResult;
       return $lastResult;
     case "BANISHADDMODIFIER":
       $banish = &GetBanish($player);
@@ -1176,10 +1111,6 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
       $mzArr = explode("-", $lastResult);
       $source = $mzArr[0];
       $index = $mzArr[1];
-      switch($source) {
-        case "MYAURAS": TokenCopyAura($player, $index); break;
-        default: break;
-      }
       return $lastResult;
     case "COUNTITEM":
       return CountItem($parameter, $player);
@@ -1277,17 +1208,11 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
     case "DQVARPASSIFSET":
       if ($dqVars[$parameter] == "1") return "PASS";
       return "PROCEED";
-    case "ADDCARDTOCHAIN":
-      AddCombatChain($lastResult, $player, $parameter, 0);
-      return $lastResult;
     case "ATTACKWITHIT":
       PlayCardSkipCosts($lastResult, "DECK");
       return $lastResult;
     case "SETDQCONTEXT":
       $dqState[4] = implode("_", explode(" ", $parameter));
-      return $lastResult;
-    case "AFTERDIEROLL":
-      AfterDieRoll($player);
       return $lastResult;
     case "MODAL":
       return ModalAbilities($player, $parameter, $lastResult);
@@ -1317,8 +1242,6 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
       return $lastResult;
     case "MZDESTROY":
       return MZDestroy($player, $lastResult);
-    case "MZUNDESTROY":
-      return MZUndestroy($player, $parameter, $lastResult);
     case "MZBANISH":
       return MZBanish($player, $parameter, $lastResult);
     case "MZREMOVE":
@@ -1431,30 +1354,12 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
         }
       }
       return $lastResult;
-    case "HITEFFECT":
-      ProcessHitEffect($parameter);
-      return $parameter;
     case "PASSREVERT":
       if($lastResult == "PASS") {
         WriteLog("That is not a valid action; reverting gamestate.");
         RevertGamestate();
       }
       return $lastResult;
-    case "PROCESSDAMAGEPREVENTION":
-      $mzIndex = explode("-", $lastResult);
-      $params =  explode("-", $parameter);
-      switch($mzIndex[0])
-      {
-        case "MYAURAS": $damage = AuraTakeDamageAbility($player, intval($mzIndex[1]), $params[0], $params[1]); break;
-        case "MYCHAR": $damage = CharacterTakeDamageAbility($player, intval($mzIndex[1]), $params[0], $params[1]); break;
-        case "MYALLY": $damage = AllyTakeDamageAbilities($player, intval($mzIndex[1]), $params[0], $params[1]); break;
-        default: break;
-      }
-      if($damage < 0) $damage = 0;
-      $dqVars[0] = $damage;
-      $dqState[6] = $damage;
-      if($damage > 0) AddDamagePreventionSelection($player, $damage, $params[1]);
-      return $damage;
     case "ALLRANDOMBOTTOM":
       $cards = explode(",", $lastResult);
       for($i=0; $i<count($cards); ++$i) {
@@ -1465,10 +1370,10 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
       EquipCard($player, $parameter);
       return "";
     case "GETTARGETOFATTACK":
-      global $CCS_WeaponIndex, $CS_PlayIndex;
+      global $AS_AttackerIndex, $CS_PlayIndex;
       $params = explode(",", $parameter);
       if(CardType($params[0]) == "AA" || GetResolvedAbilityType($params[0], $params[1]) == "AA") {
-        $combatChainState[$CCS_WeaponIndex] = GetClassState($player, $CS_PlayIndex);
+        $attackState[$AS_AttackerIndex] = GetClassState($player, $CS_PlayIndex);
         GetTargetOfAttack($params[0]);
       }
       return $lastResult;

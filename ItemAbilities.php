@@ -44,7 +44,7 @@ function ItemUses($cardID)
 
 function PayItemAbilityAdditionalCosts($cardID, $from)
 {
-  global $currentPlayer, $CS_PlayIndex, $combatChain;
+  global $currentPlayer, $CS_PlayIndex;
   $index = GetClassState($currentPlayer, $CS_PlayIndex);
   switch($cardID) {
 
@@ -82,12 +82,6 @@ function DestroyItemForPlayer($player, $index, $skipDestroy=false)
   }
   $cardID = $items[$index];
   for($i = $index + ItemPieces() - 1; $i >= $index; --$i) {
-    if($items[$i] == "DYN492c") {
-      $indexWeapon = FindCharacterIndex($player, "DYN492a");
-      DestroyCharacter($player, $indexWeapon);
-      $indexEquipment = FindCharacterIndex($player, "DYN492b");
-      DestroyCharacter($player, $indexEquipment);
-    }
     unset($items[$i]);
   }
   $items = array_values($items);

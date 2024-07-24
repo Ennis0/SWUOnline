@@ -6,7 +6,7 @@
 
 function CardIsBlockable($storedPriorityNode)
 {
-  global $combatChain, $combatChainState, $CCS_NumChainLinks, $currentPlayer;
+  global $combatChain, $attackState, $AS_NumChainLinks, $currentPlayer;
   if($storedPriorityNode[1] == "Character")
   {
     $character = &GetPlayerCharacter($currentPlayer);
@@ -15,11 +15,6 @@ function CardIsBlockable($storedPriorityNode)
   }
   switch($combatChain[0])
   {
-    case "CRU054": return !(ComboActive() && CardCost($storedPriorityNode[0]) < $combatChainState[$CCS_NumChainLinks]);
-    case "CRU056": return false; //I have no idea how to make Heron's Flight work, so I'm just gonna say it's unblockable. This is so edge case that no one will know for a while lmfaooooo
-    case "CRU057":
-    case "CRU058":
-    case "CRU059": return !(ComboActive() && AttackValue($storedPriorityNode[0]) > $combatChainState[$CCS_NumChainLinks]);
     default: return true;
   }
 }
@@ -177,7 +172,7 @@ function ArsenalIsFrozen($storedPriorityNode)
 
 function ReactionRequirementsMet($storedPriorityNode)
 {
-  global $combatChain, $combatChainState, $CCS_NumChainLinks, $mainPlayer, $currentPlayer, $CS_NumNonAttackCards, $CS_AtksWWeapon;
+  global $combatChain, $attackState, $AS_NumChainLinks, $mainPlayer, $currentPlayer, $CS_NumNonAttackCards, $CS_AtksWWeapon;
   switch($storedPriorityNode[0])
   {
 

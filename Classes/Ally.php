@@ -227,7 +227,7 @@ class Ally {
         case "4484318969"://Moff Gideon Leader
           global $mainPlayer;
           //As defined on NetworkingLibraries.GetTargetOfAttack, $mainPlayer is always the attacker
-          if(CardCost($this->CardID()) <= 3 && $mainPlayer == $this->playerID && AttackIndex() == $this->index && IsAllyAttackTarget()) {
+          if(CardCost($this->CardID()) <= 3 && $mainPlayer == $this->playerID && AttackerIndex() == $this->index && IsAllyAttackTarget()) {
             $power += 1;
           }
           break;

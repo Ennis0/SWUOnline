@@ -124,8 +124,8 @@ function RestoreAmount($cardID, $player, $index)
 
 function RaidAmount($cardID, $player, $index, $reportMode = false)
 {
-  global $currentTurnEffects, $combatChain;
-  if(count($combatChain) == 0 && !$reportMode) return 0;
+  global $currentTurnEffects;
+  if(!AttackIsOngoing() && !$reportMode) return 0;
   $amount = 0;
   $allies = &GetAllies($player);
   for($i=0; $i<count($allies); $i+=AllyPieces())
@@ -559,17 +559,6 @@ function HasReservable($cardID, $player, $index)
   }
 }
 
-
-//Critical only applies to combat damage, so you can assume player/attacker
-function CriticalAmount($cardID)
-{
-  global $mainPlayer;
-  switch($cardID)
-  {
-    default: return 0;
-  }
-}
-
 function HasStealth($cardID, $player, $index)
 {
   $allies = &GetAllies($player);
@@ -667,7 +656,7 @@ function BlockValue($cardID)
 
 function AttackValue($cardID)
 {
-  global $combatChainState, $CCS_NumBoosted, $mainPlayer, $currentPlayer;
+  global $attackState, $mainPlayer, $currentPlayer;
   if(!$cardID) return "";
   switch($cardID)
   {
@@ -1049,7 +1038,7 @@ function GetAbilityIndex($cardID, $index, $abilityName)
 function GetResolvedAbilityType($cardID, $from="-")
 {
   global $currentPlayer, $CS_AbilityIndex, $CS_PlayIndex;
-  if($from == "HAND") return "";
+  if($from != "PLAY" && $from != "EQUIP" && $from != "-") return "";
   $abilityIndex = GetClassState($currentPlayer, $CS_AbilityIndex);
   $abilityTypes = GetAbilityTypes($cardID, GetClassState($currentPlayer, $CS_PlayIndex));
   if($abilityTypes == "" || $abilityIndex == "-") return GetAbilityType($cardID, -1, $from);
@@ -1070,9 +1059,8 @@ function GetResolvedAbilityName($cardID, $from="-")
 
 function IsPlayable($cardID, $phase, $from, $index = -1, &$restriction = null, $player = "")
 {
-  global $currentPlayer, $CS_NumActionsPlayed, $combatChainState, $CCS_BaseAttackDefenseMax, $CS_NumNonAttackCards, $CS_NumAttackCards;
-  global $CCS_ResourceCostDefenseMin, $actionPoints, $mainPlayer, $defPlayer;
-  global $combatChain;
+  global $currentPlayer, $CS_NumActionsPlayed, $attackState, $CS_NumNonAttackCards, $CS_NumAttackCards;
+  global $mainPlayer, $defPlayer;
   if($from == "ARS" || $from == "BANISH") return false;
   if($player == "") $player = $currentPlayer;
   if($phase == "P" && $from == "HAND") return true;
@@ -1206,7 +1194,7 @@ function IsPlayRestricted($cardID, &$restriction, $from = "", $index = -1, $play
 
 function IsDefenseReactionPlayable($cardID, $from)
 {
-  global $combatChain, $mainPlayer;
+  global $mainPlayer;
   if(CurrentEffectPreventsDefenseReaction($from)) return false;
   return true;
 }
@@ -1217,21 +1205,6 @@ function IsAction($cardID)
   if($cardType == "A" || $cardType == "AA") return true;
   $abilityType = GetAbilityType($cardID);
   if($abilityType == "A" || $abilityType == "AA") return true;
-  return false;
-}
-
-function GoesOnCombatChain($phase, $cardID, $from)
-{
-  global $layers;
-  if($phase != "B" && $from == "EQUIP" || $from == "PLAY") $cardType = GetResolvedAbilityType($cardID, $from);
-  else if($phase == "M" && $cardID == "MON192" && $from == "BANISH") $cardType = GetResolvedAbilityType($cardID, $from);
-  else $cardType = CardType($cardID);
-  if($cardType == "I") return false; //Instants as yet never go on the combat chain
-  if($phase == "B" && count($layers) == 0) return true; //Anything you play during these combat phases would go on the chain
-  if(($phase == "A" || $phase == "D") && $cardType == "A") return false; //Non-attacks played as instants never go on combat chain
-  if($cardType == "AR") return true;
-  if($cardType == "DR") return true;
-  if(($phase == "M" || $phase == "ATTACKWITHIT") && $cardType == "AA") return true; //If it's an attack action, it goes on the chain
   return false;
 }
 
@@ -1490,7 +1463,7 @@ function AbilityHasGoAgain($cardID)
 
 function DoesEffectGrantDominate($cardID)
 {
-  global $combatChainState;
+  global $attackState;
   switch ($cardID) {
 
     default: return false;
@@ -1577,24 +1550,6 @@ function HasCombo($cardID)
     case "OUT074": case "OUT075": case "OUT076":
     case "OUT080": case "OUT081": case "OUT082":
       return true;
-  }
-  return false;
-}
-
-function ComboActive($cardID = "")
-{
-  global $combatChainState, $combatChain, $chainLinkSummary, $mainPlayer;
-  if ($cardID == "" && count($combatChain) > 0) $cardID = $combatChain[0];
-  if ($cardID == "") return false;
-  if(count($chainLinkSummary) == 0) return false;//No combat active if no previous chain links
-  $lastAttackNames = explode(",", $chainLinkSummary[count($chainLinkSummary)-ChainLinkSummaryPieces()+4]);
-  for($i=0; $i<count($lastAttackNames); ++$i)
-  {
-    $lastAttackName = GamestateUnsanitize($lastAttackNames[$i]);
-    switch ($cardID) {
-
-      default: break;
-    }
   }
   return false;
 }
@@ -1709,14 +1664,6 @@ function Is1H($cardID)
   }
 }
 
-function AbilityPlayableFromCombatChain($cardID)
-{
-  switch($cardID) {
-
-    default: return false;
-  }
-}
-
 function CardHasAltArt($cardID)
 {
   switch ($cardID) {
@@ -1777,18 +1724,6 @@ function DefinedCardType2Wrapper($cardID)
       return "Upgrade";
     default: return DefinedCardType2($cardID);
   }
-}
-
-function HasDominate($cardID)
-{
-  global $mainPlayer, $combatChainState;
-  global $CS_NumAuras, $CCS_NumBoosted;
-  switch ($cardID)
-  {
-
-    default: break;
-  }
-  return false;
 }
 
 function Rarity($cardID)
