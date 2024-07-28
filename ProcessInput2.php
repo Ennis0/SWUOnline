@@ -159,8 +159,6 @@ if (!IsGameOver()) {
 
 //Now write out the game state
 if (!$skipWriteGamestate) {
-  //if($mainPlayerGamestateStillBuilt) UpdateMainPlayerGamestate();
-  //else UpdateGameState(1);
   if(!IsModeAsync($mode))
   {
     if(GetCachePiece($gameName, 12) == "1") WriteLog("Current player is active again.");

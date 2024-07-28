@@ -758,7 +758,6 @@ function ResolveAttack()
 {
   global $attackState, $currentPlayer, $mainPlayer, $defPlayer, $currentTurnEffects;
   global $AS_DamageDealt;
-  UpdateGameState($currentPlayer);
   BuildMainPlayerGameState();
 
   $target = GetAttackTarget();
@@ -768,14 +767,12 @@ function ResolveAttack()
     return;
   }
 
-  $totalAttack = 0;
-  $totalDefense = 0;
   $attackerMZ = AttackerMZID($mainPlayer);
   $attackerArr = explode("-", $attackerMZ);
   $attacker = new Ally($attackerMZ, $mainPlayer);
   $hasOverwhelm = HasOverwhelm($attacker->CardID(), $mainPlayer, $attacker->Index());
   $attackerID = $attacker->CardID();
-  $attackerSurvived = 1;
+  $attackerSurvived = true;
   $totalAttack = $attacker->CurrentPower();
   LogCombatResolutionStats($totalAttack, 0);
 
@@ -786,7 +783,6 @@ function ResolveAttack()
     $defender = new Ally($target, $defPlayer);
     //Resolve the combat
     $defenderPower = $defender->CurrentPower();
-    if($defenderPower < 0) $defenderPower = 0;
     $excess = $totalAttack - $defender->Health();
     $damageDealt = 0;
     $destroyed = $defender->DealDamage($totalAttack, bypassShield:HasSaboteur($attackerID, $mainPlayer, $attacker->Index()), fromCombat:true, damageDealt:$attackState[$AS_DamageDealt]);
@@ -795,7 +791,7 @@ function ResolveAttack()
       $destroyed = $attacker->DealDamage($defenderPower, fromCombat:true);
       if($destroyed) {
         ClearAttacker();
-        $attackerSurvived = 0;
+        $attackerSurvived = false;
       }
     }
     if($hasOverwhelm) DealDamageAsync($defPlayer, $excess, "OVERWHELM", $attackerID);
@@ -807,7 +803,7 @@ function ResolveAttack()
     }
     AddDecisionQueue("RESOLVECOMBATDAMAGE", $mainPlayer, $totalAttack);
   } else {
-    $damage = $totalAttack - $totalDefense;
+    $damage = $totalAttack;
     DamageTrigger($defPlayer, $damage, "COMBAT", $attackerID[0]); //Include prevention
     AddDecisionQueue("RESOLVECOMBATDAMAGE", $mainPlayer, "-");
   }
@@ -853,7 +849,6 @@ function FinalizeAttack($attackOver = false)
   global $mainClassState, $CS_AtksWWeapon, $CS_LastAttack, $CS_NumSwordAttacks;
   global $CS_AnotherWeaponGainedGoAgain, $initiativeTaken;
   $attackOver = true;
-  UpdateGameState($currentPlayer);
   BuildMainPlayerGameState();
 
   //Clean up combat effects that were used and are one-time
@@ -971,7 +966,6 @@ function PassTurn()
 {
   global $playerID, $currentPlayer, $turn, $mainPlayer, $mainPlayerGamestateStillBuilt;
   if (!$mainPlayerGamestateStillBuilt) {
-    UpdateGameState($currentPlayer);
     BuildMainPlayerGameState();
   }
 

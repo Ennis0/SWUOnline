@@ -270,10 +270,6 @@ function BuildMainPlayerGameState()
   $mainPlayerGamestateStillBuilt = 1;
 }
 
-function UpdateGameState($activePlayer)
-{
-}
-
 function UpdateGameStateInner()
 {
   global $myStateBuiltFor;
@@ -354,10 +350,6 @@ function UpdateGameStateInner()
     $p1CardStats = $theirCardStats;
     $p1TurnStats = $theirTurnStats;
   }
-}
-
-function UpdateMainPlayerGameState()
-{
 }
 
 function UpdateMainPlayerGameStateInner()

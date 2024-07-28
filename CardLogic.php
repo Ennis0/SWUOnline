@@ -360,38 +360,15 @@ function ContinueDecisionQueue($lastResult = "")
   global $layers, $layerPriority, $dqVars, $dqState, $CS_PlayIndex, $CS_AdditionalCosts, $mainPlayer, $CS_LayerPlayIndex;
   global $CS_ResolvingLayerUniqueID;
   if(count($decisionQueue) == 0 || IsGamePhase($decisionQueue[0])) {
-    if($mainPlayerGamestateStillBuilt) UpdateMainPlayerGameState();
-    else if(count($decisionQueue) > 0 && $currentPlayer != $decisionQueue[1]) {
-      UpdateGameState($currentPlayer);
-    }
     if(count($decisionQueue) == 0 && count($layers) > 0) {
       $priorityHeld = 0;
-      if($mainPlayer == 1) {
-        if(ShouldHoldPriorityNow(1)) {
-          AddDecisionQueue("INSTANT", 1, "-");
-          $priorityHeld = 1;
-          $layerPriority[0] = 0;
-        }
-        if(ShouldHoldPriorityNow(2)) {
-          AddDecisionQueue("INSTANT", 2, "-");
-          $priorityHeld = 1;
-          $layerPriority[1] = 0;
-        }
-      } else {
-        if(ShouldHoldPriorityNow(2)) {
-          AddDecisionQueue("INSTANT", 2, "-");
-          $priorityHeld = 1;
-          $layerPriority[1] = 0;
-        }
-        if(ShouldHoldPriorityNow(1)) {
-          AddDecisionQueue("INSTANT", 1, "-");
-          $priorityHeld = 1;
-          $layerPriority[0] = 0;
-        }
+      if(ShouldHoldPriorityNow($currentPlayer)) {
+        AddDecisionQueue("INSTANT", $currentPlayer, "-");
+        $priorityHeld = 1;
+        $layerPriority[$currentPlayer - 1] = 0;
       }
-      if($priorityHeld) {
-        ContinueDecisionQueue("");
-      } else {
+      if($priorityHeld) ContinueDecisionQueue("");
+      else {
         CloseDecisionQueue();
         $cardID = array_shift($layers);
         $player = array_shift($layers);
@@ -404,8 +381,6 @@ function ContinueDecisionQueue($lastResult = "")
         SetClassState($player, $CS_ResolvingLayerUniqueID, $layerUniqueID);
         $params = explode("|", $parameter);
         if($currentPlayer != $player) {
-          if($mainPlayerGamestateStillBuilt) UpdateMainPlayerGameState();
-          else UpdateGameState($currentPlayer);
           $currentPlayer = $player;
           $otherPlayer = $currentPlayer == 1 ? 2 : 1;
           BuildMyGamestate($currentPlayer);
@@ -454,52 +429,66 @@ function ContinueDecisionQueue($lastResult = "")
           ClearDieRoll($player);
         }
       }
-    } else if(count($decisionQueue) > 0 && $decisionQueue[0] == "RESUMEPLAY") {
-      if($currentPlayer != $decisionQueue[1]) {
-        $currentPlayer = $decisionQueue[1];
-        $otherPlayer = $currentPlayer == 1 ? 2 : 1;
-        BuildMyGamestate($currentPlayer);
+    }
+    else if(count($decisionQueue) > 0) {
+      switch($decisionQueue[0]) {
+        case "RESUMEPLAY":
+          if($currentPlayer != $decisionQueue[1]) {
+            $currentPlayer = $decisionQueue[1];
+            $otherPlayer = $currentPlayer == 1 ? 2 : 1;
+            BuildMyGamestate($currentPlayer);
+          }
+          $params = explode("|", $decisionQueue[2]);
+          CloseDecisionQueue();
+          if($turn[0] == "B" && count($layers) == 0) //If a layer is not created
+          {
+            PlayCardEffect($params[0], $params[1], $params[2], "-", $params[3], $params[4]);
+          } else {
+            //params 3 = ability index
+            //params 4 = Unique ID
+            $additionalCosts = GetClassState($currentPlayer, $CS_AdditionalCosts);
+            if($additionalCosts == "") $additionalCosts = "-";
+            $layerIndex = count($layers) - GetClassState($currentPlayer, $CS_LayerPlayIndex);
+            $layers[$layerIndex + 2] = $params[1] . "|" . $params[2] . "|" . $params[3] . "|" . $params[4];
+            $layers[$layerIndex + 4] = $additionalCosts;
+            ProcessDecisionQueue();
+            return;
+          }
+          break;
+        case "RESUMEPAYING":
+          $player = $decisionQueue[1];
+          $params = explode("-", $decisionQueue[2]); //Parameter
+          if($lastResult == "") $lastResult = 0;
+          CloseDecisionQueue();
+          if($currentPlayer != $player) {
+            $currentPlayer = $player;
+            $otherPlayer = $currentPlayer == 1 ? 2 : 1;
+            BuildMyGamestate($currentPlayer);
+          }
+          PlayCard($params[0], $params[1], $lastResult, $params[2]);
+          break;
+        case "RESOLVEATTACK":
+          CloseDecisionQueue();
+          ResolveAttack();
+          break;
+        case "RESOLVECOMBATDAMAGE":
+          $parameter = $decisionQueue[2];
+          if($parameter != "-") $damageDone = $parameter;
+          else $damageDone = $dqState[6];
+          CloseDecisionQueue();
+          ResolveCombatDamage($damageDone);
+          break;
+        case "PASSTURN":
+          CloseDecisionQueue();
+          PassTurn();
+          break;
+        default:
+          CloseDecisionQueue();
+          FinalizeAction();
+          break;
       }
-      $params = explode("|", $decisionQueue[2]);
-      CloseDecisionQueue();
-      if($turn[0] == "B" && count($layers) == 0) //If a layer is not created
-      {
-        PlayCardEffect($params[0], $params[1], $params[2], "-", $params[3], $params[4]);
-      } else {
-        //params 3 = ability index
-        //params 4 = Unique ID
-        $additionalCosts = GetClassState($currentPlayer, $CS_AdditionalCosts);
-        if($additionalCosts == "") $additionalCosts = "-";
-        $layerIndex = count($layers) - GetClassState($currentPlayer, $CS_LayerPlayIndex);
-        $layers[$layerIndex + 2] = $params[1] . "|" . $params[2] . "|" . $params[3] . "|" . $params[4];
-        $layers[$layerIndex + 4] = $additionalCosts;
-        ProcessDecisionQueue();
-        return;
-      }
-    } else if(count($decisionQueue) > 0 && $decisionQueue[0] == "RESUMEPAYING") {
-      $player = $decisionQueue[1];
-      $params = explode("-", $decisionQueue[2]); //Parameter
-      if($lastResult == "") $lastResult = 0;
-      CloseDecisionQueue();
-      if($currentPlayer != $player) {
-        $currentPlayer = $player;
-        $otherPlayer = $currentPlayer == 1 ? 2 : 1;
-        BuildMyGamestate($currentPlayer);
-      }
-      PlayCard($params[0], $params[1], $lastResult, $params[2]);
-    } else if(count($decisionQueue) > 0 && $decisionQueue[0] == "RESOLVEATTACK") {
-      CloseDecisionQueue();
-      ResolveAttack();
-    } else if(count($decisionQueue) > 0 && $decisionQueue[0] == "RESOLVECOMBATDAMAGE") {
-      $parameter = $decisionQueue[2];
-      if($parameter != "-") $damageDone = $parameter;
-      else $damageDone = $dqState[6];
-      CloseDecisionQueue();
-      ResolveCombatDamage($damageDone);
-    } else if(count($decisionQueue) > 0 && $decisionQueue[0] == "PASSTURN") {
-      CloseDecisionQueue();
-      PassTurn();
-    } else {
+    }
+    else {
       CloseDecisionQueue();
       FinalizeAction();
     }
@@ -514,10 +503,10 @@ function ContinueDecisionQueue($lastResult = "")
     if(str_contains($parameter, "{0}")) $parameter = str_replace("{0}", $dqVars[0], $parameter);
     if(str_contains($parameter, "<0>")) $parameter = str_replace("<0>", CardLink($dqVars[0], $dqVars[0]), $parameter);
     if(str_contains($parameter, "{1}")) $parameter = str_replace("{1}", $dqVars[1], $parameter);
+    if(str_contains($parameter, "<1>")) $parameter = str_replace("<1>", CardLink($dqVars[1], $dqVars[1]), $parameter);
     if(str_contains($parameter, "{2}")) $parameter = str_replace("{2}", $dqVars[2], $parameter);
+    $parameter = str_replace(" ", "_", $parameter);//CardLink()s contain spaces, which can break things if this $parameter makes it to WriteGamestate.php(such as if $phase is YESNO). But CardLink() is also used in some cases where the underscores would show up directly, so I fix this here.
   }
-  if(count($dqVars) > 1) $parameter = str_replace("<1>", CardLink($dqVars[1], $dqVars[1]), $parameter);
-  $parameter = str_replace(" ", "_", $parameter);//CardLink()s contain spaces, which can break things if this $parameter makes it to WriteGamestate.php(such as if $phase is YESNO). But CardLink() is also used in some cases where the underscores would show up directly, so I fix this here.
   $subsequent = array_shift($decisionQueue);
   $makeCheckpoint = array_shift($decisionQueue);
   $turn[0] = $phase;
@@ -530,8 +519,6 @@ function ContinueDecisionQueue($lastResult = "")
   if(is_array($return) || strval($return) != "NOTSTATIC") {
     if($phase != "SETDQCONTEXT") $dqState[4] = "-"; //Clear out context for static states -- context only persists for one choice
     ContinueDecisionQueue($return);
-  } else {
-    if($mainPlayerGamestateStillBuilt) UpdateMainPlayerGameState();
   }
 }
 
@@ -564,12 +551,10 @@ function ProcessLayer($player, $parameter)
 
 function ProcessTrigger($player, $parameter, $uniqueID, $additionalCosts, $target="-")
 {
-  global $CS_NumNonAttackCards, $CS_ArcaneDamageDealt, $CS_NumRedPlayed, $CS_DamageTaken, $EffectContext;
-  global $CID_BloodRotPox, $CID_Inertia, $CID_Frailty, $attackState, $AS_IsAmbush;
+  global $EffectContext, $AS_IsAmbush;
   $items = &GetItems($player);
   $character = &GetPlayerCharacter($player);
   $auras = &GetAuras($player);
-  $parameter = ShiyanaCharacter($parameter);
   $EffectContext = $parameter;
   switch ($parameter) {
     case "AMBUSH":
@@ -640,7 +625,6 @@ function FinalizeAction()
 {
   global $currentPlayer, $mainPlayer, $actionPoints, $turn, $defPlayer, $makeBlockBackup, $mainPlayerGamestateStillBuilt;
   global $isPass, $inputMode;
-  if(!$mainPlayerGamestateStillBuilt) UpdateGameState(1);
   BuildMainPlayerGamestate();
   if($turn[0] == "M") {
     if(AttackIsOngoing())
