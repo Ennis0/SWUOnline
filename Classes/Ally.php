@@ -126,7 +126,10 @@ class Ally {
   //Returns true if the ally is destroyed
   function DealDamage($amount, $bypassShield = false, $fromCombat = false, &$damageDealt = NULL) {
     if($this->index == -1 || $amount <= 0) return false;
-    if(!$fromCombat && $this->CardID() == "1810342362") return;//Lurking TIE Phantom
+    if(!$fromCombat && $this->CardID() == "1810342362") { //Lurking TIE Phantom
+      WriteLog(CardLink("1810342362", "1810342362") . " evaded <span style='color:Crimson;'>$damageDealt noncombat damage</span>");
+      return;
+    }
     $subcards = $this->GetSubcards();
     for($i=0; $i<count($subcards); $i+=SubcardPieces()) {
       if($subcards[$i] == "8752877738") {
@@ -136,7 +139,10 @@ class Ally {
         $subcards = array_values($subcards);
         $this->allies[$this->index+4] = count($subcards) > 0 ? implode(",", $subcards) : "-";
         AddEvent("SHIELDDESTROYED", $this->UniqueID());
-        if(!$bypassShield) return false;//Cancel the damage if shield prevented it
+        if(!$bypassShield) {
+          WriteLog(CardLink($this->CardID(), $this->CardID()) . " lost a shield, preventing <span style='color:Crimson;'>$damageDealt damage</span>");
+          return false;//Cancel the damage if shield prevented it
+        }
       }
       switch($subcards[$i]) {
         case "5738033724"://Boba Fett's Armor
@@ -162,6 +168,7 @@ class Ally {
     }
     if($damageDealt != NULL) $damageDealt = $amount;
     $this->AddDamage($amount);
+    WriteLog(CardLink($this->CardID(), $this->CardID()) . " took <span style='color:Crimson;'>$damageDealt damage</span>" . ($fromCombat ? " from combat" : ""));
     AddEvent("DAMAGE", $this->UniqueID() . "!" . $amount);
     if($this->Health() <= 0 && ($this->CardID() != "d1a7b76ae7" || $this->LostAbilities())) { //Chirrut Imwe
       DestroyAlly($this->playerID, $this->index, fromCombat:$fromCombat);

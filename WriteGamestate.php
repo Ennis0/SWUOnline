@@ -11,7 +11,7 @@ while (!flock($handler, LOCK_EX) && $lockTries < 10) {
 
 if ($lockTries == 10) { fclose($handler); exit; }
 
-$gamestateContent = implode(" ", $playerHealths) . "\r\n";
+$gamestateContent = implode(" ", $playerDamageValues) . "\r\n";
 
 //Player 1
 $gamestateContent .= implode(" ", $p1Hand) . "\r\n";
@@ -25,7 +25,7 @@ $gamestateContent .= implode(" ", $p1Discard) . "\r\n";
 $gamestateContent .= implode(" ", $p1Pitch) . "\r\n";
 $gamestateContent .= implode(" ", $p1Banish) . "\r\n";
 $gamestateContent .= implode(" ", $p1ClassState) . "\r\n";
-$gamestateContent .= implode(" ", $p1CharacterEffects) . "\r\n";
+$gamestateContent .= "\r\n"; //Unused
 $gamestateContent .= implode(" ", $p1Material) . "\r\n";
 $gamestateContent .= implode(" ", $p1CardStats) . "\r\n";
 $gamestateContent .= implode(" ", $p1TurnStats) . "\r\n";
@@ -45,7 +45,7 @@ $gamestateContent .= implode(" ", $p2Discard) . "\r\n";
 $gamestateContent .= implode(" ", $p2Pitch) . "\r\n";
 $gamestateContent .= implode(" ", $p2Banish) . "\r\n";
 $gamestateContent .= implode(" ", $p2ClassState) . "\r\n";
-$gamestateContent .= implode(" ", $p2CharacterEffects) . "\r\n";
+$gamestateContent .= "\r\n"; //Unused
 $gamestateContent .= implode(" ", $p2Material) . "\r\n";
 $gamestateContent .= implode(" ", $p2CardStats) . "\r\n";
 $gamestateContent .= implode(" ", $p2TurnStats) . "\r\n";
@@ -69,7 +69,7 @@ $gamestateContent .= implode(" ", $decisionQueue) . "\r\n";
 $gamestateContent .= implode(" ", $dqVars) . "\r\n";
 $gamestateContent .= implode(" ", $dqState) . "\r\n";
 $gamestateContent .= implode(" ", $layers) . "\r\n";
-$gamestateContent .= implode(" ", $layerPriority) . "\r\n";
+$gamestateContent .= "\r\n"; //Unused
 $gamestateContent .= $mainPlayer . "\r\n";
 $gamestateContent .= implode(" ", $lastPlayed) . "\r\n";
 $gamestateContent .= "\r\n"; //Unused

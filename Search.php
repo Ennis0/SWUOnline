@@ -480,16 +480,6 @@ function SearchItemsForCardMulti($playerID, $card1, $card2 = "", $card3 = "")
   return $cardList;
 }
 
-
-function SearchCharacterEffects($player, $index, $effect)
-{
-  $effects = &GetCharacterEffects($player);
-  for ($i = 0; $i < count($effects); $i += CharacterEffectPieces()) {
-    if ($effects[$i] == $index && $effects[$i + 1] == $effect) return true;
-  }
-  return false;
-}
-
 function GetArsenalFaceDownIndices($player)
 {
   $arsenal = &GetArsenal($player);

@@ -100,8 +100,6 @@ function TypeToPlay($phase)
       return "a card";
     case "CHOOSEBANISH":
       return "a card from banish";
-    case "INSTANT":
-      return "an instant";
     case "END":
       return "an order for triggers";
     case "CHOOSEFIRSTPLAYER":

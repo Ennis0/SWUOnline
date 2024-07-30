@@ -32,12 +32,6 @@ function CardSubType($cardID)
   //return CardSubTypes($cardID);
 }
 
-function CharacterHealth($cardID)
-{
-  if($cardID == "DUMMY") return 1000;
-  return CardLife($cardID);
-}
-
 function CharacterIntellect($cardID)
 {
   switch($cardID) {
@@ -1094,7 +1088,6 @@ function IsPlayable($cardID, $phase, $from, $index = -1, &$restriction = null, $
     }
   }
   if($phase == "M" && ($cardType == "A" || $cardType == "AA" || $cardType == "I")) return true;
-  if($cardType == "I" && ($phase == "INSTANT" || $phase == "A" || $phase == "D")) return true;
   return false;
 
 }
@@ -1153,15 +1146,6 @@ function UpgradeFilter($cardID)
       return "leader=1";
     default: return "";
   }
-}
-
-function CanPlayInstant($phase)
-{
-  if($phase == "M") return true;
-  if($phase == "A") return true;
-  if($phase == "D") return true;
-  if($phase == "INSTANT") return true;
-  return false;
 }
 
 function IsToken($cardID)

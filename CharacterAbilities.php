@@ -94,40 +94,6 @@ function ResetCharacter($player) {
   }
 }
 
-function MainCharacterHitEffects()
-{
-  global $attackState, $AS_AttackerIndex, $mainPlayer;
-  $modifier = 0;
-  $mainCharacterEffects = &GetMainCharacterEffects($mainPlayer);
-  for($i = 0; $i < count($mainCharacterEffects); $i += 2) {
-    if($mainCharacterEffects[$i] == $attackState[$AS_AttackerIndex]) {
-      switch($mainCharacterEffects[$i + 1]) {
-        case "CgyJxpEgzk"://Spirit Blade: Infusion
-          Draw($mainPlayer);
-          break;
-        default: break;
-      }
-    }
-  }
-  return $modifier;
-}
-
-function MainCharacterGrantsGoAgain()
-{
-  global $attackState, $AS_AttackerIndex, $mainPlayer;
-  if($attackState[$AS_AttackerIndex] == -1) return false;
-  $mainCharacterEffects = &GetMainCharacterEffects($mainPlayer);
-  for($i = 0; $i < count($mainCharacterEffects); $i += 2) {
-    if($mainCharacterEffects[$i] == $attackState[$AS_AttackerIndex]) {
-      switch($mainCharacterEffects[$i + 1]) {
-
-        default: break;
-      }
-    }
-  }
-  return false;
-}
-
 function CharacterCostModifier($cardID, $from)
 {
   global $currentPlayer, $CS_NumSwordAttacks;

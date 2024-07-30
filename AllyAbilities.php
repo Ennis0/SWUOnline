@@ -878,11 +878,51 @@ function AllyAttackedAbility($attackTarget, $index) {
   }
 }
 
-function AddAllyPlayAbilityLayers($cardID, $from) {
+function AddAllyPlayCardAbilityLayers($cardID, $from) {
   global $currentPlayer;
   $allies = &GetAllies($currentPlayer);
   for($i=0; $i<count($allies); $i+=AllyPieces()) {
-    if(AllyHasPlayCardAbility($cardID, $allies[$i], $currentPlayer, $i)) AddLayer("TRIGGER", $currentPlayer, "AFTERPLAYABILITY", $cardID, $from, $allies[$i] . "," . $allies[$i+5]);
+    $addTrigger = false;
+    switch($allies[$i]) {
+      case "415bde775d"://Hondo Ohnaka
+        if($from == "RESOURCES") {
+          $addTrigger = true;
+          $triggerCode = function() use($currentPlayer) {
+            AddDecisionQueue("MULTIZONEINDICES", $currentPlayer, "MYALLY&THEIRALLY");
+            AddDecisionQueue("SETDQCONTEXT", $currentPlayer, "Choose a unit to give an experience token", 1);
+            AddDecisionQueue("MAYCHOOSEMULTIZONE", $currentPlayer, "<-", 1);
+            AddDecisionQueue("MZOP", $currentPlayer, "ADDEXPERIENCE", 1);
+          };
+        }
+        break;
+      case "0052542605"://Bossk
+        if(DefinedTypesContains($cardID, "Event", $currentPlayer)) {
+          $addTrigger = true;
+          $triggerCode = function() use($currentPlayer) {
+            AddDecisionQueue("MULTIZONEINDICES", $currentPlayer, "MYALLY&THEIRALLY");
+            AddDecisionQueue("SETDQCONTEXT", $currentPlayer, "Choose a unit to deal 2 damage to");
+            AddDecisionQueue("MAYCHOOSEMULTIZONE", $currentPlayer, "<-", 1);
+            AddDecisionQueue("MZOP", $currentPlayer, "DEALDAMAGE,2", 1);
+          };
+        }
+        break;
+      case "0961039929"://Colonel Yularen
+        if(DefinedTypesContains($cardID, "Unit", $currentPlayer) && AspectContains($cardID, "Command", $player)) {
+          $addTrigger = true;
+          $triggerCode = function() use($currentPlayer){Restore(1, $currentPlayer);};
+        }
+        break;
+      case "8031540027"://Dengar
+      case "724979d608"://Cad Bane Leader 
+      case "4088c46c4d"://The Mandalorian
+      case "3010720738"://Tobias Beckett
+        return true;
+      case "9850906885"://Maz Kanata
+      case "5907868016"://Fighters for Freedom
+      case "0981852103"://Lady Proxima
+      case "3952758746"://Toro Calican
+    }
+    if($addTrigger) AddLayer("TRIGGER", $currentPlayer, "AFTERPLAYABILITY", $cardID, $from, $allies[$i] . "," . $allies[$i+5], $triggerCode);
   }
   $otherPlayer = $currentPlayer == 1 ? 2 : 1;
   $theirAllies = &GetAllies($otherPlayer);

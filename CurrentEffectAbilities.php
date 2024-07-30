@@ -195,6 +195,12 @@ function CurrentEffectCostModifiers($cardID, $from, $reportMode=false)
           $costModifier -= 99;
           $remove = true;
           break;
+        case "9644107128": //Bamboozle
+          if($cardID == "9644107128") {
+            $costModifier -= -99;
+            $remove = true;
+          }
+          break;
         case "5707383130"://Bendu
           if(!AspectContains($cardID, "Heroism", $currentPlayer) && !AspectContains($cardID, "Villainy", $currentPlayer)) {
             $costModifier -= 2;

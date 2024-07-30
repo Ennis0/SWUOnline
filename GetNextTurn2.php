@@ -281,7 +281,7 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
       background: url(./Images/dmgbg-l.png) left no-repeat, url(./Images/dmgbg-r.png) right no-repeat; background-size: contain;
       filter: drop-shadow(1px 2px 1px rgba(0, 0, 0, 0.40));
       font-weight: 700; font-size: 24px; text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.30);  
-      user-select: none;pointer-events:none;'>$myHealth</span>");
+      user-select: none;pointer-events:none;'>$myDamage</span>");
       echo (($manualMode ? "<span style='position:absolute; top:120px; left:65px;'>" . CreateButton($playerID, "+1", 10006, 0, "20px") . CreateButton($playerID, "-1", 10005, 0, "20px") . "</span>" : ""));
   echo ("<span class='base-their-dmg' 
       style='position:fixed;
@@ -290,7 +290,7 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
       background: url(./Images/dmgbg-l.png) left no-repeat, url(./Images/dmgbg-r.png) right no-repeat; background-size: contain;
       filter: drop-shadow(1px 2px 1px rgba(0, 0, 0, 0.40));
       font-weight: 700; font-size: 24px; text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.30);  
-      user-select: none;pointer-events:none;'>$theirHealth</span>");
+      user-select: none;pointer-events:none;'>$theirDamage</span>");
   echo (($manualMode ? "<span style='position:absolute; top:0px; left:65px;'>" . CreateButton($playerID, "+1", 10008, 0, "20px") . CreateButton($playerID, "-1", 10007, 0, "20px") . "</span>" : ""));
   echo ("</div></div>");
   echo ("<div style='position:absolute; top:37px; left:-130px; z-index:-5;'></div>");
@@ -414,7 +414,7 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
 
   // Triggers
 
-  if ($turn[0] == "INSTANT" && count($layers) > 0) {
+  if ($turn[0] == "CHOOSETRIGGERORDER" && count($layers) > 0) {
       $content = "";
       
       // Add a title and instructions for triggers
@@ -501,7 +501,7 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
       // Close the container for the tiles and labels
       $content .= "</div>"; // Close the tiles-wrapper
   
-      echo CreatePopup("INSTANT", [], 0, 1, "", 1, $content, "./", false, true); // Output the content in a popup
+      echo CreatePopup("CHOOSETRIGGERORDER", [], 0, 1, "", 1, $content, "./", false, true); // Output the content in a popup
   }
   
   if ($turn[0] == "OVER") {
@@ -914,7 +914,7 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
         $actionDataOverride = $inOptions ? $mzIndex : 0;
         $border = CardBorderColor($myHand[$i], "HAND", $actionTypeOut == 16);
       } else {
-        if ($playerID == $currentPlayer) $playable = $turn[0] == "ARS" || ($actionType == 16 && str_contains("," . $turn[2] . ",", "," . $i . ",")) || ($turn[0] == "M" || $turn[0] == "INSTANT") && IsPlayable($myHand[$i], $turn[0], "HAND", -1, $restriction);
+        if ($playerID == $currentPlayer) $playable = $turn[0] == "ARS" || ($actionType == 16 && str_contains("," . $turn[2] . ",", "," . $i . ",")) || $turn[0] == "M" && IsPlayable($myHand[$i], $turn[0], "HAND", -1, $restriction);
         else $playable = false;
         $border = CardBorderColor($myHand[$i], "HAND", $playable);
         $actionTypeOut = (($currentPlayer == $playerID) && $playable == 1 ? $actionType : 0);
@@ -1114,7 +1114,7 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
   }
 
   echo ("<div style='display:none;' id='lastCurrentPlayer'>" . $currentPlayer . "</div>");
-  echo ("<div style='display:none;' id='passConfirm'>" . ($turn[0] == "ARS" && count($myHand) > 0 && !ArsenalFull($playerID) ? "true" : "false") . "</div>");
+  echo ("<div style='display:none;' id='passConfirm'>" . ($turn[0] == "ARS" && count($myHand) > 0 ? "true" : "false") . "</div>");
 }
 
 function PlayableCardBorderColor($cardID)

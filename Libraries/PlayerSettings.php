@@ -232,7 +232,7 @@ function ParseSettingsStringValueToIdInt(string $value)
 
 function ChangeSetting($player, $setting, $value, $playerId = "")
 {
-  global $SET_MuteChat, $SET_AlwaysHoldPriority, $layerPriority;
+  global $SET_MuteChat, $SET_AlwaysHoldPriority;
   if($player != "") {
     $settings = &GetSettings($player);
     $settings[$setting] = $value;
@@ -243,8 +243,6 @@ function ChangeSetting($player, $setting, $value, $playerId = "")
       } else {
         WriteLog("Chat enabled by player " . $player);
       }
-    } else if($setting == $SET_AlwaysHoldPriority) {
-      $layerPriority[$player - 1] = "1";
     }
   }
   if($playerId != "" && SaveSettingInDatabase($setting)) SaveSetting($playerId, $setting, $value);

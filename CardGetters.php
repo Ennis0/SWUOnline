@@ -44,20 +44,6 @@ function &GetPlayerCharacter($player)
   }
 }
 
-function &GetCharacterEffects($player)
-{
-  global $currentPlayer, $mainPlayer, $mainPlayerGamestateStillBuilt;
-  global $mainCharacterEffects, $defCharacterEffects, $myCharacterEffects, $theirCharacterEffects;
-  global $myStateBuiltFor;
-  if ($mainPlayerGamestateStillBuilt) {
-    if ($player == $mainPlayer) return $mainCharacterEffects;
-    else return $defCharacterEffects;
-  } else {
-    if ($player == $myStateBuiltFor) return $myCharacterEffects;
-    else return $theirCharacterEffects;
-  }
-}
-
 function &GetPlayerClassState($player)
 {
   global $currentPlayer, $mainPlayer, $mainPlayerGamestateStillBuilt;
@@ -142,17 +128,17 @@ function &GetPitch($player)
   }
 }
 
-function &GetHealth($player)
+function &GetDamage($player)
 {
   global $currentPlayer, $mainPlayer, $mainPlayerGamestateStillBuilt;
-  global $myHealth, $theirHealth, $mainHealth, $defHealth;
+  global $myDamage, $theirDamage, $mainDamage, $defDamage;
   global $myStateBuiltFor;
   if ($mainPlayerGamestateStillBuilt) {
-    if ($player == $mainPlayer) return $mainHealth;
-    else return $defHealth;
+    if ($player == $mainPlayer) return $mainDamage;
+    else return $defDamage;
   } else {
-    if ($player == $myStateBuiltFor) return $myHealth;
-    else return $theirHealth;
+    if ($player == $myStateBuiltFor) return $myDamage;
+    else return $theirDamage;
   }
 }
 
@@ -317,20 +303,6 @@ function &GetSettings($player)
   else return $p2Settings;
 }
 
-function &GetMainCharacterEffects($player)
-{
-  global $currentPlayer, $mainPlayer, $mainPlayerGamestateStillBuilt;
-  global $myCharacterEffects, $theirCharacterEffects, $mainCharacterEffects, $defCharacterEffects;
-  global $myStateBuiltFor;
-  if ($mainPlayerGamestateStillBuilt) {
-    if ($player == $mainPlayer) return $mainCharacterEffects;
-    else return $defCharacterEffects;
-  } else {
-    if ($player == $myStateBuiltFor) return $myCharacterEffects;
-    else return $theirCharacterEffects;
-  }
-}
-
 function HeroCard($player) {
   $character = &GetPlayerCharacter($player);
   return count($character) > CharacterPieces() ? $character[CharacterPieces()] : "";
@@ -384,28 +356,8 @@ function GetPlayerBase($player)
   return $character[0];
 }
 
-function ArsenalFull($player)
-{
-  $arsenal = &GetArsenal($player);
-  $fullCount = SearchCharacterActive($player, "ELE213") && ArsenalHasFaceUpCard($player) ? ArsenalPieces() * 2 : ArsenalPieces();
-  return count($arsenal) >= $fullCount;
-}
-
 function ArsenalEmpty($player)
 {
   $arsenal = &GetArsenal($player);
   return count($arsenal) == 0;
-}
-
-function ActiveCharacterEffects($player, $index)
-{
-  $effects = "";
-  $characterEffects = GetCharacterEffects($player);
-  for ($i = 0; $i < count($characterEffects); $i += CharacterEffectPieces()) {
-    if ($characterEffects[$i] == $index) {
-      if ($effects != "") $effects .= ", ";
-      $effects .= CardName($characterEffects[$i + 1]);
-    }
-  }
-  return $effects;
 }

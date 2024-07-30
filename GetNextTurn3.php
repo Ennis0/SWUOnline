@@ -270,7 +270,7 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
   $response->opponentHand = $handContents;
 
   //Their Health
-  $response->opponentHealth = $theirHealth;
+  $response->opponentHealth = $theirDamage;
   //Their soul count
   $response->opponentSoulCount = count($theirSoul);
 
@@ -350,7 +350,7 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
   // echo ("<br>"); //End hand div
 
   //My Health
-  $response->playerHealth = $myHealth;
+  $response->playerHealth = $myDamage;
   //My soul count
   $response->playerSoulCount = count($mySoul);
 

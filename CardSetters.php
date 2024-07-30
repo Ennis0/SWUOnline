@@ -298,28 +298,6 @@ function ClearNextCardArcaneBuffs($player, $playedCard="", $from="")
   }
 }
 
-function ConsumeArcaneBonus($player)
-{
-  global $currentTurnEffects, $CS_ResolvingLayerUniqueID;
-  $uniqueID = GetClassState($player, $CS_ResolvingLayerUniqueID);
-  $totalBonus = 0;
-  for ($i = count($currentTurnEffects) - CurrentTurnPieces(); $i >= 0; $i -= CurrentTurnPieces())
-  {
-    $remove = 0;
-    if ($currentTurnEffects[$i + 1] == $player && $currentTurnEffects[$i+2] == $uniqueID)
-    {
-      $bonus = EffectArcaneBonus($currentTurnEffects[$i]);
-      if($bonus > 0)
-      {
-        $totalBonus += $bonus;
-        $remove = 1;
-      }
-    }
-    if ($remove == 1) RemoveCurrentTurnEffect($i);
-  }
-  return $totalBonus;
-}
-
 function ConsumeDamagePrevention($player)
 {
   global $CS_NextDamagePrevented;
@@ -367,26 +345,6 @@ function SetClassState($player, $piece, $value)
   }
 }
 
-function AddCharacterEffect($player, $index, $effect)
-{
-  global $currentPlayer, $mainPlayer, $mainPlayerGamestateStillBuilt;
-  global $myCharacterEffects, $theirCharacterEffects, $mainCharacterEffects, $defCharacterEffects;
-  global $myStateBuiltFor;
-  if ($mainPlayerGamestateStillBuilt) {
-    if ($player == $mainPlayer) {
-      array_push($mainCharacterEffects, $index, $effect);
-    } else {
-      array_push($defCharacterEffects, $index, $effect);
-    }
-  } else {
-    if ($player == $myStateBuiltFor) {
-      array_push($myCharacterEffects, $index, $effect);
-    } else {
-      array_push($theirCharacterEffects, $index, $effect);
-    }
-  }
-}
-
 function AddGraveyard($cardID, $player, $from, $modifier="-")
 {
   global $currentPlayer, $mainPlayer, $mainPlayerGamestateStillBuilt;
@@ -426,29 +384,6 @@ function SearchCharacterAddUses($player, $uses, $type = "", $subtype = "")
       $character[$i + 5] += $uses;
     }
   }
-}
-
-function SearchCharacterAddEffect($player, $effect, $type = "", $subtype = "")
-{
-  $character = &GetPlayerCharacter($player);
-  for ($i = 0; $i < count($character); $i += CharacterPieces()) {
-    if ($character[$i + 1] != 0 && ($type == "" || CardType($character[$i]) == $type) && ($subtype == "" || $subtype == CardSubtype($character[$i]))) {
-      AddCharacterEffect($player, $i, $effect);
-    }
-  }
-}
-
-function RemoveCharacterEffects($player, $index, $effect)
-{
-  $effects = &GetCharacterEffects($player);
-  for ($i = count($effects) - CharacterEffectPieces(); $i >= 0; $i -= CharacterEffectPieces()) {
-    if ($effects[$i] == $index && $effects[$i + 1] == $effect) {
-      unset($effects[$i + 1]);
-      unset($effects[$i]);
-    }
-  }
-  $effects = array_values($effects);
-  return false;
 }
 
 function AddSpecificGraveyard($cardID, &$graveyard, $from, $player, $modifier="-")

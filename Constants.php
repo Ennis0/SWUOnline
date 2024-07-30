@@ -133,9 +133,10 @@ function PermanentPieces()
 //4 - Additional Costs
 //5 - Unique ID (the unique ID of the object that created the layer)
 //6 - Layer Unique ID (the unique ID of the layer)
+//7 - Trigger Code(lambda expression to run on trigger resolution)
 function LayerPieces()
 {
-  return 7;
+  return 8;
 }
 
 function LandmarkPieces()
@@ -223,7 +224,7 @@ $CS_NumEventsPlayed = 48;
 $CS_AlluvionUsed = 49;
 $CS_MaxQuellUsed = 50;
 $CS_DamageDealt = 51; //Only includes damage dealt by the hero. CR 2.1 8.2.8f If an ally deals damage, the controlling player and their hero are not considered to have dealt damage.
-$CS_ArcaneTargetsSelected = 52;
+$CS_TargetsSelected = 52;
 $CS_NumDragonAttacks = 53;
 $CS_NumIllusionistAttacks = 54;
 $CS_LastDynCost = 55;
@@ -283,7 +284,7 @@ function ResetClassState($player)
   global $CS_NumAttacks, $CS_DieRoll, $CS_NumMandalorianAttacks, $CS_NumWizardNonAttack, $CS_LayerTarget, $CS_NumSwordAttacks;
   global $CS_HitsWithWeapon, $CS_ArcaneDamagePrevention, $CS_DynCostResolved, $CS_CardsEnteredGY;
   global $CS_HighestRoll, $CS_NumAuras, $CS_AbilityIndex, $CS_AdditionalCosts, $CS_NumRedPlayed, $CS_PlayUniqueID, $CS_AlluvionUsed;
-  global $CS_NumPhantasmAADestroyed, $CS_NumEventsPlayed, $CS_MaxQuellUsed, $CS_DamageDealt, $CS_ArcaneTargetsSelected, $CS_NumDragonAttacks, $CS_NumIllusionistAttacks;
+  global $CS_NumPhantasmAADestroyed, $CS_NumEventsPlayed, $CS_MaxQuellUsed, $CS_DamageDealt, $CS_TargetsSelected, $CS_NumDragonAttacks, $CS_NumIllusionistAttacks;
   global $CS_LastDynCost, $CS_NumIllusionistActionCardAttacks, $CS_ArcaneDamageDealt, $CS_LayerPlayIndex, $CS_NumCardsPlayed, $CS_NamesOfCardsPlayed, $CS_NumBoostPlayed;
   global $CS_PlayedAsInstant, $CS_AnotherWeaponGainedGoAgain, $CS_NumContractsCompleted, $CS_HitsWithSword, $CS_NumMelodyPlayed, $CS_NumClonesPlayed, $CS_UnitsThatAttackedBase;
 
@@ -338,7 +339,7 @@ function ResetClassState($player)
   $classState[$CS_AlluvionUsed] = 0;
   $classState[$CS_MaxQuellUsed] = 0;
   $classState[$CS_DamageDealt] = 0;
-  $classState[$CS_ArcaneTargetsSelected] = "-";
+  $classState[$CS_TargetsSelected] = "-";
   $classState[$CS_NumDragonAttacks] = 0;
   $classState[$CS_NumIllusionistAttacks] = 0;
   $classState[$CS_LastDynCost] = 0;
@@ -354,13 +355,6 @@ function ResetClassState($player)
   $classState[$CS_HitsWithSword] = 0;
   $classState[$CS_NumClonesPlayed] = 0;
   $classState[$CS_UnitsThatAttackedBase] = "-";
-}
-
-function ResetCharacterEffects()
-{
-  global $mainCharacterEffects, $defCharacterEffects;
-  $mainCharacterEffects = [];
-  $defCharacterEffects = [];
 }
 
 function SetAttackTarget($mzTarget)

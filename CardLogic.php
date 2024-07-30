@@ -209,46 +209,9 @@ function IsCombatEffectLimited($index)
   return false;
 }
 
-function PrependLayer($cardID, $player, $parameter, $target = "-", $additionalCosts = "-", $uniqueID = "-")
-{
-    global $layers;
-    array_push($layers, $cardID, $player, $parameter, $target, $additionalCosts, $uniqueID, GetUniqueId());
-    return count($layers);//How far it is from the end
-}
-
 function IsAbilityLayer($cardID)
 {
   return $cardID == "TRIGGER" || $cardID == "PLAYABILITY" || $cardID == "ATTACKABILITY" || $cardID == "ACTIVATEDABILITY" || $cardID == "AFTERPLAYABILITY";
-}
-
-function AddLayer($cardID, $player, $parameter, $target = "-", $additionalCosts = "-", $uniqueID = "-", $append = false)
-{
-  global $layers, $dqState;
-  //Layers are on a stack, so you need to push things on in reverse order
-  if($append) {
-    array_push($layers, $cardID, $player, $parameter, $target, $additionalCosts, $uniqueID, GetUniqueId());
-    if(IsAbilityLayer($cardID))
-    {
-      $orderableIndex = intval($dqState[8]);
-      if($orderableIndex == -1) $dqState[8] = LayerPieces();
-    }
-    return LayerPieces();
-  }
-  array_unshift($layers, GetUniqueId());
-  array_unshift($layers, $uniqueID);
-  array_unshift($layers, $additionalCosts);
-  array_unshift($layers, $target);
-  array_unshift($layers, $parameter);
-  array_unshift($layers, $player);
-  array_unshift($layers, $cardID);
-  if(IsAbilityLayer($cardID))
-  {
-    $orderableIndex = intval($dqState[8]);
-    if($orderableIndex == -1) $dqState[8] = 0;
-    else $dqState[8] += LayerPieces();
-  }
-  else $dqState[8] = -1;//If it's not a trigger, it's not orderable
-  return count($layers);//How far it is from the end
 }
 
 function AddDecisionQueue($phase, $player, $parameter, $subsequent = 0, $makeCheckpoint = 0)
@@ -293,7 +256,6 @@ function ProcessDecisionQueue()
 {
   global $turn, $decisionQueue, $dqState;
   if($dqState[0] != "1") {
-    $count = count($turn);
     if(count($turn) < 3) $turn[2] = "-";
     $dqState[0] = "1"; //If the decision queue is currently active/processing
     $dqState[1] = $turn[0];
@@ -318,7 +280,6 @@ function CloseDecisionQueue()
   $dqState[5] = "-"; //Clear Decision queue multizone indices
   $dqState[6] = "0"; //Damage dealt
   $dqState[7] = "0"; //Target
-  $dqState[8] = "-1"; //Orderable index (what layer after which triggers can be reordered)
   $decisionQueue = [];
   if(($turn[0] == "D" || $turn[0] == "A") && !AttackIsOngoing()) {
     $currentPlayer = $mainPlayer;
@@ -326,18 +287,18 @@ function CloseDecisionQueue()
   }
 }
 
-function ShouldHoldPriorityNow($player)
+//Returns true when the given player should be given the choice to arrange triggers or to choose which player to resolve triggers first.
+function ShouldHoldPriorityNow($player) 
 {
-  global $layerPriority, $layers, $currentPlayer, $dqState;
-  if($player != $currentPlayer) return false;
-  if(count($layers) == LayerPieces()) return false;
-  return $dqState[8] > 0;
-}
-
-function SkipHoldingPriorityNow($player)
-{
-  global $layerPriority;
-  $layerPriority[$player - 1] = "0";
+  global $mainPlayer;
+  $innermostTriggerStack = InnermostTriggerStack();
+  $p1TriggerCount = count(array_filter($innermostTriggerStack, function($a){return $a->Player() == 1;}));
+  $p2TriggerCount = count(array_filter($innermostTriggerStack, function($a){return $a->Player() == 2;}));
+  if($p1TriggerCount > 0 && $p2TriggerCount > 0) return $player == $mainPlayer; //If both players have triggers to resolve, the active player chooses which player gets to resolve theirs first.
+  switch($player){
+    case 1: return $p1TriggerCount > 1;
+    case 2: return $p2TriggerCount > 1;
+  }
 }
 
 function IsGamePhase($phase)
@@ -357,80 +318,40 @@ function IsGamePhase($phase)
 function ContinueDecisionQueue($lastResult = "")
 {
   global $decisionQueue, $turn, $currentPlayer, $mainPlayerGamestateStillBuilt, $makeCheckpoint, $otherPlayer;
-  global $layers, $layerPriority, $dqVars, $dqState, $CS_PlayIndex, $CS_AdditionalCosts, $mainPlayer, $CS_LayerPlayIndex;
-  global $CS_ResolvingLayerUniqueID;
-  if(count($decisionQueue) == 0 || IsGamePhase($decisionQueue[0])) {
-    if(count($decisionQueue) == 0 && count($layers) > 0) {
-      $priorityHeld = 0;
-      if(ShouldHoldPriorityNow($currentPlayer)) {
-        AddDecisionQueue("INSTANT", $currentPlayer, "-");
-        $priorityHeld = 1;
-        $layerPriority[$currentPlayer - 1] = 0;
+  global $dqVars, $dqState, $CS_PlayIndex, $CS_AdditionalCosts, $mainPlayer, $CS_LayerPlayIndex;
+  if(count($decisionQueue) == 0) {
+    //Resolve triggers, or next other layer if there are none.
+    if(!$currentlyResolvingStack->IsEmpty()) {
+      switch($currentlyResolvingStack->GetDecisionState()) {
+        case "PLAYERORDER":
+          AddDecisionQueue("CHOOSEWHICHPLAYERSTRIGGERS", $mainPlayer, "-");
+          break;
+        case "P1TRIGGERORDER":
+          AddDecisionQueue("CHOOSETRIGGERORDER", 1, "-");
+          break;
+        case "P2TRIGGERORDER":
+          AddDecisionQueue("CHOOSETRIGGERORDER", 2, "-");
+          break;
+        default: //No ordering decisions need to be made, resolve the next trigger.
+          $currentlyResolvingStack->ResolveNextTrigger();
+          break;
+        }
+        ProcessDecisionQueue();
+        return;
       }
-      if($priorityHeld) ContinueDecisionQueue("");
-      else {
-        CloseDecisionQueue();
-        $cardID = array_shift($layers);
-        $player = array_shift($layers);
-        $parameter = array_shift($layers);
-        $target = array_shift($layers);
-        $additionalCosts = array_shift($layers);
-        $uniqueID = array_shift($layers);
-        $layerUniqueID = array_shift($layers);
-        //WriteLog("CardID:" . $cardID . " Player:" . $player . " Param:" . $parameter . " UniqueID:" . $uniqueID);//Uncomment this to visualize layer execution
-        SetClassState($player, $CS_ResolvingLayerUniqueID, $layerUniqueID);
-        $params = explode("|", $parameter);
-        if($currentPlayer != $player) {
-          $currentPlayer = $player;
-          $otherPlayer = $currentPlayer == 1 ? 2 : 1;
-          BuildMyGamestate($currentPlayer);
-        }
-        $layerPriority[0] = ShouldHoldPriority(1);
-        $layerPriority[1] = ShouldHoldPriority(2);
-        if($cardID == "ENDTURN") EndStep();
-        else if($cardID == "ENDSTEP") FinishTurnPass();
-        else if($cardID == "RESUMETURN") $turn[0] = "M";
-        else if($cardID == "LAYER") ProcessLayer($player, $parameter);
-        else if($cardID == "FINALIZEATTACK") FinalizeAttack($parameter);
-        else if($cardID == "DEFENDSTEP") { $turn[0] = "A"; $currentPlayer = $mainPlayer; }
-        else if(IsAbilityLayer($cardID)) {
-          if(AttackIsOngoing()) {
-            AddAfterCombatLayer($cardID, $player, $parameter, $target, $additionalCosts, $uniqueID);
-            ProcessDecisionQueue();
-          } else {
-            global $CS_AbilityIndex;
-            if($cardID == "TRIGGER") {
-              ProcessTrigger($player, $parameter, $uniqueID, $additionalCosts, $target);
-              ProcessDecisionQueue();
-            }
-            else {
-              $cardID = $parameter;
-              $subparamArr = explode("!", $target);
-              $from = $subparamArr[0];
-              $resourcesPaid = $subparamArr[1];
-              $target = count($subparamArr) > 2 ? $subparamArr[2] : "-";
-              $additionalCosts = count($subparamArr) > 3 ? $subparamArr[3] : "-";
-              $abilityIndex = count($subparamArr) > 4 ? $subparamArr[4] : -1;
-              $playIndex = count($subparamArr) > 5 ? $subparamArr[5] : -1;
-                SetClassState($player, $CS_AbilityIndex, $abilityIndex);
-                SetClassState($player, $CS_PlayIndex, $playIndex);
-                $playText = PlayAbility($cardID, $from, $resourcesPaid, $target, $additionalCosts);
-                if($from != "PLAY") WriteLog("Resolving play ability of " . CardLink($cardID, $cardID) . ($playText != "" ? ": " : ".") . $playText);
-                if($from == "EQUIP") {
-                  EquipPayAdditionalCosts(FindCharacterIndex($player, $cardID), "EQUIP");
-                }
-                ProcessDecisionQueue();
-            }
-          }
-        }
-        else {
-          SetClassState($player, $CS_PlayIndex, $params[2]); //This is like a parameter to PlayCardEffect and other functions
-          PlayCardEffect($cardID, $params[0], $params[1], $target, $additionalCosts, $params[3], $params[2]);
-          ClearDieRoll($player);
-        }
+      else { //Resolve pending non-trigger layer.
+        global $pendingLayer;
+        $layerType = $pendingLayer->Type();
+        if($layerType == "ENDTURN") EndStep();
+        else if($layerType == "ENDSTEP") FinishTurnPass();
+        else if($layerType == "RESUMETURN") $turn[0] = "M";
+        else if($layerType == "LAYER") ProcessLayer($player, $parameter);
+        else if($layerType == "FINALIZEATTACK") FinalizeAttack($parameter);
+        else if($layerType == "DEFENDSTEP") { $turn[0] = "A"; $currentPlayer = $mainPlayer; }
       }
+      return;
     }
-    else if(count($decisionQueue) > 0) {
+    else if(IsGamePhase($decisionQueue[0])) {
       switch($decisionQueue[0]) {
         case "RESUMEPLAY":
           if($currentPlayer != $decisionQueue[1]) {
@@ -487,13 +408,15 @@ function ContinueDecisionQueue($lastResult = "")
           FinalizeAction();
           break;
       }
+      ProcessDecisionQueue();
+      return;
     }
-    else {
-      CloseDecisionQueue();
-      FinalizeAction();
-    }
-    return;
-  }
+      /*global $stackToAddNewTriggers, $currentlyResolvingStack;
+      if (!$stackToAddNewTriggers->IsEmpty()) {
+        $currentlyResolvingStack =& $stackToAddNewTriggers;
+        $stackToAddNewTriggers = new Stack();
+      }*/
+  //Carry out the next DecisionQueue step.
   $phase = array_shift($decisionQueue);
   $player = array_shift($decisionQueue);
   $parameter = array_shift($decisionQueue);
@@ -549,8 +472,11 @@ function ProcessLayer($player, $parameter)
   }
 }
 
-function ProcessTrigger($player, $parameter, $uniqueID, $additionalCosts, $target="-")
+function ProcessTrigger($player, $parameter, $uniqueID, $additionalCosts, $target="-", $triggerCode="-")
 {
+  if($triggerCode != "-"){
+    return $triggerCode();
+  }
   global $EffectContext, $AS_IsAmbush;
   $items = &GetItems($player);
   $character = &GetPlayerCharacter($player);
@@ -683,14 +609,6 @@ function EndTurnProcedure($player) {
   Draw($player);
   MZMoveCard($player, "MYHAND", "MYRESOURCES", may:true, context:"Choose a card to resource", silent:true);
   AddDecisionQueue("AFTERRESOURCE", $player, "HAND", 1);
-}
-
-function TopDeckToArsenal($player)
-{
-  $deck = &GetDeck($player);
-  if(ArsenalFull($player) || count($deck) == 0) return;
-  AddArsenal(array_shift($deck), $player, "DECK", "DOWN");
-  WriteLog("The top card of player " . $player . "'s deck was put in their arsenal");
 }
 
 function DiscardHand($player)

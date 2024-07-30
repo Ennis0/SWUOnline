@@ -23,7 +23,7 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
   global $defCharacter, $otherPlayer;
   global $CS_NextNAACardGoAgain, $AS_AttackTarget, $CS_NumLeftPlay;
   global $CS_LayerTarget, $dqVars, $mainPlayer, $lastPlayed, $dqState, $CS_AbilityIndex, $CS_CharacterIndex;
-  global $CS_AdditionalCosts, $CS_AlluvionUsed, $CS_MaxQuellUsed, $CS_DamageDealt, $CS_ArcaneTargetsSelected, $inGameStatus;
+  global $CS_AdditionalCosts, $CS_AlluvionUsed, $CS_MaxQuellUsed, $CS_DamageDealt, $CS_TargetsSelected, $inGameStatus;
   global $CS_ArcaneDamageDealt, $MakeStartTurnBackup, $AS_AttackTargetUID, $MakeStartGameBackup;
   $rv = "";
   switch($phase) {
@@ -35,7 +35,7 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
       else $subparam = "";
       switch($parameter) {
         case "GETINDICES": $rv = GetIndices($subparam); break;
-        case "ARCANETARGET": $rv = GetArcaneTargetIndices($player, $subparam); break;
+        case "TARGETSBYTYPE": $rv = GetIndicesForTargetType($player, $subparam); break;
         case "DAMAGEPREVENTION":
           $rv = GetDamagePreventionIndices($player);
           break;
@@ -244,15 +244,6 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
       $character = &GetPlayerCharacter($player);
       $character[$parameter+7] = 1;
       return $lastResult;
-    case "ADDCHARACTEREFFECT":
-      $characterEffects = &GetCharacterEffects($player);
-      array_push($characterEffects, $lastResult, $parameter);
-      return $lastResult;
-    case "ADDMZBUFF":
-      $lrArr = explode("-", $lastResult);
-      $characterEffects = &GetCharacterEffects($player);
-      array_push($characterEffects, $lrArr[1], $parameter);
-      return $lastResult;
     case "ADDMZUSES":
       $lrArr = explode("-", $lastResult);
       switch($lrArr[0]) {
@@ -260,19 +251,6 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
         case "MYALLY": case "THEIRALLY":
           $ally = new Ally($lastResult, $player);
           $ally->ModifyUses($parameter);
-          break;
-        default: break;
-      }
-      return $lastResult;
-    case "ATTACKEROP":
-      $mzID = AttackerMZID($currentPlayer);
-      $type = GetMZType($mzID);
-      switch($parameter) {
-        case "ADDDURABILITY":
-          if($type == "CHAR") {
-            $character = &GetPlayerCharacter($currentPlayer);
-            ++$character[GetMZIndex($mzID) + 2];
-          }
           break;
         default: break;
       }
@@ -318,7 +296,6 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
             MZHealAlly($player, $lastResult, count($parameterArr) > 1 ? $parameterArr[1] : 1);
           }
           return $lastResult;
-        case "CHANGEATTACKTARGET": SetAttackTarget($lastResult); return $lastResult;
         case "DEALDAMAGE":
           $targetArr = explode("-", $lastResult);
           $targetPlayer = ($targetArr[0] == "MYCHAR" || $targetArr[0] == "MYALLY" ? $player : ($player == 1 ? 2 : 1));
@@ -342,6 +319,10 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
           $ally = new Ally($lastResult);
           $ally->Destroy();
           return $lastResult;
+        case "ADDSUBCARD":
+          $ally = new Ally($lastResult);
+          $ally->Attach($parameterArr[1]);
+          break;
         case "ADDEXPERIENCE":
           $ally = new Ally($lastResult);
           $ally->Attach("2007868442");//Experience token
@@ -506,7 +487,10 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
           $ally->DiscardCaptive($captiveID);
           return $lastResult;
         case "PLAYCARD":
-          PlayCard($lastResult, $paramArr[1], -1, -1);
+          PlayCard($paramArr[1], $paramArr[2], -1, -1);
+          return $lastResult;
+        case "PLAYCARDSKIPPREPAYMENT":
+          PlayCard($paramArr[1], $paramArr[2], true);
           return $lastResult;
         case "SWAPDQPERSPECTIVE":
           $arr = explode(",", $lastResult);
@@ -956,7 +940,6 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
       $damage -= intval($lastResult);
       if($type == "COMBAT")
       {
-        if($source == "soO3hjaVfN" && SearchCurrentTurnEffects("soO3hjaVfN", $mainPlayer, true)) $damage *= 2;
         $dqState[6] = $damage;
       }
       $damage = DealDamageAsync($player, $damage, $type, $source);
@@ -1047,6 +1030,16 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
       $arsenal = &GetArsenal($player);
       if(count($arsenal) > 0 && count($params) == 2) AddCurrentTurnEffect($params[0], $player, $params[1], $arsenal[count($arsenal) - ArsenalPieces() + 5]);
       return $lastResult;
+    case "DECLAREATTACK":
+      global $layers;
+      $parameterArray = explode("|", $parameter); //The passed parameter should be the attacker's index, then any attack qualifiers(ambush etc.)
+      $layerParameters = //The attacker and attack target can easily have left play or changed index by the time the layer resolves, so we store them by their uniqueIDs.
+        ["attackerUniqueID" => MZGetUniqueID("MYALLY-" . $parameterArray[0], $player),
+        "targetUniqueID"=>MZGetUniqueID($lastResult, $player),
+        "qualifiers" => $parameterArray[1]];
+      if($lastResult == "THEIRCHAR-0") $layerParameters["targetUniqueID"] = "BASE"; //If the target is the base, you only really need to know that fact; a uniqueID is redundant.
+      array_unshift($layers, new Layer("DEALCOMBATDAMAGE", ));
+      break;
     case "PROCESSATTACKTARGET":
       $attackState[$AS_AttackTarget] = $lastResult;
       $mzArr = explode("-", $lastResult);
@@ -1207,9 +1200,6 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
     case "DQVARPASSIFSET":
       if ($dqVars[$parameter] == "1") return "PASS";
       return "PROCEED";
-    case "ATTACKWITHIT":
-      PlayCardSkipCosts($lastResult, "DECK");
-      return $lastResult;
     case "SETDQCONTEXT":
       $dqState[4] = implode("_", explode(" ", $parameter));
       return $lastResult;
@@ -1369,12 +1359,7 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
       EquipCard($player, $parameter);
       return "";
     case "GETTARGETOFATTACK":
-      global $AS_AttackerIndex, $CS_PlayIndex;
-      $params = explode(",", $parameter);
-      if(CardType($params[0]) == "AA" || GetResolvedAbilityType($params[0], $params[1]) == "AA") {
-        $attackState[$AS_AttackerIndex] = GetClassState($player, $CS_PlayIndex);
-        GetTargetOfAttack($params[0]);
-      }
+      GetTargetOfAttack($lastResult, $player);
       return $lastResult;
     case "STARTTURN":
       StartTurn();
@@ -1420,6 +1405,23 @@ function DecisionQueueStaticEffect($phase, $player, $parameter, $lastResult)
       PrependDecisionQueue("BUTTONINPUT", $player, GetIndices($parameter + 1));
       PrependDecisionQueue("SETDQCONTEXT", $player, "Choose an amount of damage to deal to " . CardLink($theirAllies[$index], $theirAllies[$index]));
       return $lastResult;
+    case "WHICHPLAYERSTRIGGERS":
+      PrependDecisionQueue("BRINGPLAYERSTRIGGERSFORWARD", $player, "-");
+      PrependDecisionQueue("BUTTONINPUT", $player, "Yourself,Opponent");
+      PrependDecisionQueue("SETDQCONTEXT", $player, "Choose which player's triggers will resolve first.");
+      break;
+    case "BRINGPLAYERSTRIGGERSFORWARD":
+      global $currentlyResolvingStack;
+      $targetPlayer = $lastResult == "Yourself" ? $player : ($player == 1 ? 2 : 1);
+      $currentlyResolvingStack->BringPlayersTriggersForward($targetPlayer);
+      break;
+    case "SWITCHTONESTEDSTACK":
+      global $stackToAddNewTriggers, $currentlyResolvingStack;
+      if(count($stackToAddNewTriggers) > 0) {
+        $currentlyResolvingStack =& $stackToAddNewTriggers;
+        $stackToAddNewTriggers = NULL;
+      }
+      break;
     default:
       return "NOTSTATIC";
   }
