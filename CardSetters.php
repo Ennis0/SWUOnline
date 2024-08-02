@@ -1,42 +1,5 @@
 <?php
 
-function BanishCardForPlayer($cardID, $player, $from, $modifier = "-", $banishedBy = "")
-{
-  global $currentPlayer, $mainPlayer, $mainPlayerGamestateStillBuilt;
-  global $myBanish, $theirBanish, $mainBanish, $defBanish;
-  global $myClassState, $theirClassState, $mainClassState, $defClassState;
-  global $myStateBuiltFor;
-  if ($mainPlayerGamestateStillBuilt) {
-    if ($player == $mainPlayer) return BanishCard($mainBanish, $mainClassState, $cardID, $modifier, $player, $from, $banishedBy);
-    else return BanishCard($defBanish, $defClassState, $cardID, $modifier, $player, $from, $banishedBy);
-  } else {
-    if ($player == $myStateBuiltFor) return BanishCard($myBanish, $myClassState, $cardID, $modifier, $player, $from, $banishedBy);
-    else return BanishCard($theirBanish, $theirClassState, $cardID, $modifier, $player, $from, $banishedBy);
-  }
-}
-
-function BanishCard(&$banish, &$classState, $cardID, $modifier, $player = "", $from = "", $banishedBy = "")
-{
-  global $CS_CardsBanished, $actionPoints, $CS_Num6PowBan, $currentPlayer, $mainPlayer;
-  $rv = -1;
-  if ($player == "") $player = $currentPlayer;
-  if(CardType($cardID) != "T") { //If you banish a token, the token ceases to exist.
-    $rv = count($banish);
-    array_push($banish, $cardID, $modifier, GetUniqueId());
-  }
-  ++$classState[$CS_CardsBanished];
-  return $rv;
-}
-
-function RemoveBanish($player, $index)
-{
-  $banish = &GetBanish($player);
-  for ($i = $index + BanishPieces() - 1; $i >= $index; --$i) {
-    unset($banish[$i]);
-  }
-  $banish = array_values($banish);
-}
-
 function AddBottomDeck($cardID, $player, $from)
 {
   $deck = &GetDeck($player);
@@ -124,16 +87,6 @@ function AddResources($cardID, $player, $from, $facing, $counters=0, $isExhauste
   $arsenal[] = GetUniqueId(); //Unique ID
 }
 
-function AddArsenal($cardID, $player, $from, $facing, $counters=0)
-{
-  global $mainPlayer;
-  $arsenal = &GetArsenal($player);
-  $character = &GetPlayerCharacter($player);
-  $cardSubType = CardSubType($cardID);
-  WriteLog("Warning: Deprecated function AddArsenal called. Please report a bug.");
-  AddMemory($cardID, $player, $from, $facing, $counters);
-}
-
 function ArsenalEndTurn($player)
 {
   $arsenal = &GetArsenal($player);
@@ -212,7 +165,7 @@ function DestroyArsenal($player, $index=-1)
 
 function AddMaterial($cardID, $player, $from)
 {
-  global $currentPlayer, $mainPlayer, $mainPlayerGamestateStillBuilt;
+  global $gamestate, $mainPlayerGamestateStillBuilt;
   $material = &GetMaterial($player);
   $material[] = $cardID;
 }
@@ -254,50 +207,6 @@ function EffectArcaneBonus($cardID)
   }
 }
 
-function AssignArcaneBonus($playerID)
-{
-  global $currentTurnEffects, $layers;
-  $layerIndex = 0;
-  for($i=0; $i<count($currentTurnEffects); $i+=CurrentTurnPieces())
-  {
-    if($currentTurnEffects[$i+1] == $playerID && EffectArcaneBonus($currentTurnEffects[$i]) > 0)
-    {
-      $skip = intval($currentTurnEffects[$i+2]) != -1;
-      switch($currentTurnEffects[$i])
-      {
-        case "DYN209": if(CardCost($layers[$layerIndex]) > 2) $skip = true; break;
-        case "DYN210": if(CardCost($layers[$layerIndex]) > 1) $skip = true; break;
-        case "DYN211": if(CardCost($layers[$layerIndex]) > 0) $skip = true; break;
-        default: break;
-      }
-      if(!$skip)
-      {
-        WriteLog("Arcane bonus from " . CardLink($currentTurnEffects[$i], $currentTurnEffects[$i]) . " associated with " . CardLink($layers[$layerIndex], $layers[$layerIndex]));
-        $uniqueID = $layers[$layerIndex+6];
-        $currentTurnEffects[$i+2] = $uniqueID;
-      }
-    }
-  }
-}
-
-function ClearNextCardArcaneBuffs($player, $playedCard="", $from="")
-{
-  global $currentTurnEffects;
-  $layerIndex = 0;
-  for($i=0; $i<count($currentTurnEffects); $i+=CurrentTurnPieces())
-  {
-    $remove = 0;
-    if($currentTurnEffects[$i+1] == $player)
-    {
-      switch($currentTurnEffects[$i])
-      {
-        default: break;
-      }
-    }
-    if ($remove == 1) RemoveCurrentTurnEffect($i);
-  }
-}
-
 function ConsumeDamagePrevention($player)
 {
   global $CS_NextDamagePrevented;
@@ -333,11 +242,11 @@ function AppendClassState($player, $piece, $value, $allowRepeats = true)
 
 function SetClassState($player, $piece, $value)
 {
-  global $currentPlayer, $mainPlayer, $mainPlayerGamestateStillBuilt;
+  global $gamestate, $mainPlayerGamestateStillBuilt;
   global $myClassState, $theirClassState, $mainClassState, $defClassState;
   global $myStateBuiltFor;
   if ($mainPlayerGamestateStillBuilt) {
-    if ($player == $mainPlayer) $mainClassState[$piece] = $value;
+    if ($player == $gamestate->mainPlayer) $mainClassState[$piece] = $value;
     else $defClassState[$piece] = $value;
   } else {
     if ($player == $myStateBuiltFor) $myClassState[$piece] = $value;
@@ -347,12 +256,12 @@ function SetClassState($player, $piece, $value)
 
 function AddGraveyard($cardID, $player, $from, $modifier="-")
 {
-  global $currentPlayer, $mainPlayer, $mainPlayerGamestateStillBuilt;
+  global $gamestate, $mainPlayerGamestateStillBuilt;
   global $myDiscard, $theirDiscard, $mainDiscard, $defDiscard;
   global $myStateBuiltFor, $CS_CardsEnteredGY;
   IncrementClassState($player, $CS_CardsEnteredGY);
   if ($mainPlayerGamestateStillBuilt) {
-    if ($player == $mainPlayer) AddSpecificGraveyard($cardID, $mainDiscard, $from, $player, $modifier);
+    if ($player == $gamestate->mainPlayer) AddSpecificGraveyard($cardID, $mainDiscard, $from, $player, $modifier);
     else AddSpecificGraveyard($cardID, $defDiscard, $from, $player, $modifier);
   } else {
     if ($player == $myStateBuiltFor) AddSpecificGraveyard($cardID, $myDiscard, $from, $player, $modifier);
@@ -394,15 +303,15 @@ function AddSpecificGraveyard($cardID, &$graveyard, $from, $player, $modifier="-
 
 function NegateLayer($MZIndex, $goesWhere = "GY")
 {
-  global $layers;
+  global $gamestate;
   $params = explode("-", $MZIndex);
   $index = $params[1];
-  $cardID = $layers[$index];
-  $player = $layers[$index + 1];
+  $cardID = $gamestate->layers[$index];
+  $player = $gamestate->layers[$index + 1];
   for ($i = $index + LayerPieces()-1; $i >= $index; --$i) {
-    unset($layers[$i]);
+    unset($gamestate->layers[$i]);
   }
-  $layers = array_values($layers);
+  $gamestate->layers = array_values($gamestate->layers);
   switch ($goesWhere) {
     case "GY":
       AddGraveyard($cardID, $player, "LAYER");

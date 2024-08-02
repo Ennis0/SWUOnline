@@ -683,7 +683,7 @@ function CardStatsUI($player)
 function CardStats($player)
 {
   global $CardStats_TimesPlayed, $CardStats_TimesActivated, $CardStats_TimesResourced;
-  global $TurnStats_DamageThreatened, $TurnStats_DamageDealt, $TurnStats_CardsPlayedOffense, $TurnStats_CardsPlayedDefense, $TurnStats_CardsPitched, $TurnStats_CardsBlocked, $firstPlayer;
+  global $TurnStats_DamageThreatened, $TurnStats_DamageDealt, $TurnStats_CardsPlayedOffense, $TurnStats_CardsPlayedDefense, $TurnStats_CardsPitched, $TurnStats_CardsBlocked, $gamestate;
   global $TurnStats_ResourcesUsed, $TurnStats_CardsLeft, $TurnStats_DamageBlocked, $darkMode;
   if (AreStatsDisabled($player))
     return "";
@@ -724,7 +724,7 @@ function CardStats($player)
   $otherPlayerTurnStats = &GetTurnStats($otherPlayer);
   $rv .= "<div style='float:right; width:49%; height:85%;';>";
   $rv .= "<h2 style='text-align:center'>Turn Stats</h2>";
-  if ($player == $firstPlayer)
+  if ($player == $gamestate->firstPlayer)
     $rv .= "<i>First turn omitted for first player</i><br>";
   //Damage stats
   $totalDamageThreatened = 0;
@@ -734,7 +734,7 @@ function CardStats($player)
   $totalDefensiveCards = 0;
   $totalBlocked = 0;
   $numTurns = 0;
-  $start = ($player == $firstPlayer ? TurnStatPieces() : 0); // TODO: Not skip first turn for first player
+  $start = ($player == $gamestate->firstPlayer ? TurnStatPieces() : 0); // TODO: Not skip first turn for first player
   for ($i = $start; $i < count($turnStats); $i += TurnStatPieces()) {
     $totalDamageThreatened += $turnStats[$i + $TurnStats_DamageThreatened];
     $totalDamageDealt += $turnStats[$i + $TurnStats_DamageDealt];
@@ -819,12 +819,12 @@ function PitchColor($pitch)
 
 function DiscardUI()
 {
-  global $turn, $currentPlayer, $playerID, $cardSize;
+  global $gamestate, $playerID, $cardSize;
   $rv = "";
   $size = 120;
   $discard = GetDiscard($playerID);
   for ($i = 0; $i < count($discard); $i += DiscardPieces()) {
-    $action = $currentPlayer == $playerID && IsPlayable($discard[$i], $turn[0], "GY", $i) ? 35 : 0;
+    $action = $gamestate->currentPlayer == $playerID && IsPlayable($discard[$i], $gamestate->turn[0], "GY", $i) ? 35 : 0;
     $border = CardBorderColor($discard[$i], "GY", $action > 0);
     if($action > 0)
       $rv .= Card($discard[$i], "concat", $size, $action, 1, 0, $border, 0, strval($i));
@@ -836,12 +836,12 @@ function DiscardUI()
 
 function ResourceUI()
 {
-  global $turn, $currentPlayer, $playerID, $cardSize;
+  global $gamestate, $playerID, $cardSize;
   $rv = "";
   $size = 120;
   $resources = GetResourceCards($playerID);
   for ($i = 0; $i < count($resources); $i += ResourcePieces()) {
-    $action = $currentPlayer == $playerID && IsPlayable($resources[$i], $turn[0], "RESOURCES", $i) ? 5 : 0;
+    $action = $gamestate->currentPlayer == $playerID && IsPlayable($resources[$i], $gamestate->turn[0], "RESOURCES", $i) ? 5 : 0;
     $border = CardBorderColor($resources[$i], "RESOURCES", $action > 0);
     if($action > 0)
       $rv .= Card($resources[$i], "concat", $size, $action, 1, 0, $border, 0, strval($i));
@@ -851,90 +851,10 @@ function ResourceUI()
   return $rv;
 }
 
-function BanishUI($from = "")
-{
-  global $turn, $currentPlayer, $playerID, $cardSize, $cardSizeAura;
-  $rv = "";
-  $size = ($from == "HAND" ? $cardSizeAura : 120);
-  $banish = GetBanish($playerID);
-  for ($i = 0; $i < count($banish); $i += BanishPieces()) {
-    $action = $currentPlayer == $playerID && IsPlayable($banish[$i], $turn[0], "BANISH", $i) ? 14 : 0;
-    $mod = explode("-", $banish[$i + 1])[0];
-    $border = CardBorderColor($banish[$i], "BANISH", $action > 0, $mod);
-    if ($mod == "INT")
-      $rv .= Card($banish[$i], "concat", $size, 0, 1, 1); //Display intimidated cards grayed out and unplayable
-    else if ($mod == "TCL" || $mod == "TT" || $mod == "TCC" || $mod == "NT" || $mod == "INST" || $mod == "MON212" || $mod == "ARC119")
-      $rv .= Card($banish[$i], "concat", $size, $action, 1, 0, $border, 0, strval($i)); //Display banished cards that are playable
-    else // if($from != "HAND")
-    {
-      if (PlayableFromBanish($banish[$i], $banish[$i + 1]) || AbilityPlayableFromBanish($banish[$i]))
-        $rv .= Card($banish[$i], "concat", $size, $action, 1, 0, $border, 0, strval($i));
-      else if ($from != "HAND")
-        $rv .= Card($banish[$i], "concat", $size, 0, 1, 0, $border);
-    }
-  }
-  return $rv;
-}
-
-function BanishUIMinimal($from = "")
-{
-  global $turn, $currentPlayer, $playerID, $cardSizeAura, $MyCardBack, $mainPlayer;
-  $rv = "";
-  $size = ($from == "HAND" ? $cardSizeAura : 120);
-  $banish = GetBanish($playerID);
-  for ($i = 0; $i < count($banish); $i += BanishPieces()) {
-    $action = $currentPlayer == $playerID && IsPlayable($banish[$i], $turn[0], "BANISH", $i) ? 14 : 0;
-    $mod = explode("-", $banish[$i + 1])[0];
-    $border = CardBorderColor($banish[$i], "BANISH", $action > 0, $mod);
-    if ($mod == "INT") {
-      if ($rv != "")
-        $rv .= "|";
-      if ($playerID == 3)
-        ClientRenderedCard(cardNumber: $MyCardBack, overlay: 1, controller: $playerID);
-      else
-        $rv .= ClientRenderedCard(cardNumber: $banish[$i], overlay: 1, controller: $playerID);
-    } else {
-      if ($action > 0) {
-        if ($rv != "")
-          $rv .= "|";
-        $rv .= ClientRenderedCard(cardNumber: $banish[$i], action: $action, borderColor: $border, actionDataOverride: strval($i), controller: $playerID);
-      } else if ($from != "HAND") {
-        $rv .= Card($banish[$i], "concat", $size, 0, 1, 0, $border);
-      }
-    }
-  }
-  return $rv;
-}
-
-function TheirBanishUIMinimal($from = "")
-{
-  global $playerID, $cardSizeAura, $TheirCardBack, $turn, $mainPlayer;
-  $rv = "";
-  $size = ($from == "HAND" ? $cardSizeAura : 120);
-  $otherPlayer = ($playerID == 1 ? 2 : 1);
-  $banish = GetBanish($otherPlayer);
-  for ($i = 0; $i < count($banish); $i += BanishPieces()) {
-    $mod = explode("-", $banish[$i + 1])[0];
-    if ($mod == "INT") {
-      if ($rv != "")
-        $rv .= "|";
-      $rv .= ClientRenderedCard(cardNumber: $TheirCardBack, overlay: 1, controller: $playerID);
-    } else {
-      if ($otherPlayer == $mainPlayer && IsPlayable($banish[$i], $turn[0], "BANISH", $i, $restriction, $otherPlayer)) {
-        if ($rv != "")
-          $rv .= "|";
-        $rv .= ClientRenderedCard(cardNumber: $banish[$i], controller: $otherPlayer);
-      } else if ($from != "HAND")
-        $rv .= Card($banish[$i], "concat", $size, 0, 1, 0);
-    }
-  }
-  return $rv;
-}
-
 function CardBorderColor($cardID, $from, $isPlayable, $mod = "-")
 {
-  global $playerID, $currentPlayer, $turn;
-  if ($playerID != $currentPlayer)
+  global $playerID, $gamestate;
+  if ($playerID != $gamestate->currentPlayer)
     return 0;
   if($from == "HAND") {
     $helptext = GetPhaseHelptext();
@@ -943,11 +863,6 @@ function CardBorderColor($cardID, $from, $isPlayable, $mod = "-")
     else if($isPlayable)
       return $mod == "THEIRS" ? 2 : 6; // red border for opponent's cards
     else return 0;
-  }
-  else if ($from == "BANISH") {
-    if ($isPlayable || PlayableFromBanish($cardID, $mod))
-      return 7;
-    return 0;
   }
   else if ($isPlayable)
     return $mod == "THEIRS" ? 2 : 6; // red border for opponent's cards
@@ -1046,32 +961,4 @@ function PreviousTurnSelectionUI()
   if (file_exists("./Games/" . $gameName . "/" . $lastTurnFN))
     $rv .= CreateButton($playerID, "Last Turn", 10003, $lastTurnFN, "20px") . "<BR>";
   return $rv;
-}
-
-function GetTheirBanishForDisplay($playerID)
-{
-  global $theirBanish;
-  $TheirCardBack = GetCardBack($playerID == 1 ? 2 : 1);
-  $banish = array();
-  for ($i = 0; $i < count($theirBanish); $i += BanishPieces()) {
-    if ($theirBanish[$i + 1] == "INT" || $theirBanish[$i + 1] == "UZURI")
-      $banish[] = $TheirCardBack;
-    else
-      $banish[] = $theirBanish[$i];
-  }
-  return $banish;
-}
-
-function GetMyBanishForDisplay($playerID)
-{
-  global $myBanish;
-  $myCardBack = GetCardBack($playerID == 1 ? 1 : 2);
-  $banish = array();
-  for ($i = 0; $i < count($myBanish); $i += BanishPieces()) {
-    if ($myBanish[$i + 1] == "INT" || $myBanish[$i + 1] == "UZURI")
-      $banish[] = $myCardBack;
-    else
-      $banish[] = $myBanish[$i];
-  }
-  return $banish;
 }

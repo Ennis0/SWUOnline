@@ -20,7 +20,7 @@ function PhaseName($phase)
 
 function TypeToPlay($phase)
 {
-  global $turn;
+  global $gamestate;
   switch ($phase) {
     case "M":
       return "an Action";
@@ -81,7 +81,7 @@ function TypeToPlay($phase)
     case "MULTICHOOSETHEIRUNIT":
       return "unit";
     case "YESNO":
-      return str_replace("_", " ", $turn[2]);
+      return str_replace("_", " ", $gamestate->turn[2]);
     case "MULTICHOOSETEXT":
       return " options";
     case "MAYMULTICHOOSETEXT":
@@ -98,8 +98,6 @@ function TypeToPlay($phase)
       return "a card";
     case "MAYCHOOSEMULTIZONE":
       return "a card";
-    case "CHOOSEBANISH":
-      return "a card from banish";
     case "END":
       return "an order for triggers";
     case "CHOOSEFIRSTPLAYER":

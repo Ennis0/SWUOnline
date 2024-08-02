@@ -61,7 +61,7 @@
     include_once 'includes/functions.inc.php';
     include_once 'includes/dbh.inc.php';
 
-    if ($currentPlayer == $playerID) {
+    if ($gamestate->currentPlayer == $playerID) {
       $icon = "ready.png";
       $readyText = "You are the player with priority.";
     } else {

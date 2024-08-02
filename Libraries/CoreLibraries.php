@@ -30,28 +30,23 @@ function GetRandom($low=-1, $high=-1)
 
 function SeedRandom()
 {
-  global $randomSeeded, $currentRound, $turn, $currentPlayer, $layers;
-  $seedString = $currentRound. implode("", $turn) . $currentPlayer;
-  if(count($layers) > 0) for($i=0; $i<count($layers); ++$i) $seedString .= $layers[$i];
+  global $randomSeeded, $gamestate;
+  $seedString = $currentRound. implode("", $gamestate->turn) . $gamestate->currentPlayer;
+  if(count($gamestate->layers) > 0) for($i=0; $i<count($gamestate->layers); ++$i) $seedString .= $gamestate->layers[$i];
 
   $char = &GetPlayerCharacter(1);
   for($i=0; $i<count($char); ++$i) $seedString .= $char[$i];
   $char = &GetPlayerCharacter(2);
   for($i=0; $i<count($char); ++$i) $seedString .= $char[$i];
 
-  $banish = &GetBanish(1);
-  for($i=0; $i<count($banish); ++$i) $seedString .= $banish[$i];
-  $banish = &GetBanish(2);
-  for($i=0; $i<count($banish); ++$i) $seedString .= $banish[$i];
-
   $discard = &GetDiscard(1);
   for($i=0; $i<count($discard); ++$i) $seedString .= $discard[$i];
-  $banish = &GetDiscard(2);
+  $discard = &GetDiscard(2);
   for($i=0; $i<count($discard); ++$i) $seedString .= $discard[$i];
 
   $deck = &GetDeck(1);
   for($i=0; $i<count($deck); ++$i) $seedString .= $deck[$i];
-  $banish = &GetDeck(2);
+  $deck = &GetDeck(2);
   for($i=0; $i<count($deck); ++$i) $seedString .= $deck[$i];
 
   $seedString = hash("sha256", $seedString);

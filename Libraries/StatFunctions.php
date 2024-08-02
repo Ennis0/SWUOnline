@@ -28,9 +28,9 @@ $TurnStats_Overblock = 10;
 
 function LogPlayCardStats($player, $cardID, $from, $type="")
 {
-  global $turn, $currentRound, $CardStats_TimesPlayed, $CardStats_TimesActivated, $CardStats_TimesResourced;
-  global $TurnStats_CardsPitched, $TurnStats_CardsBlocked, $mainPlayer;
-  if($type == "") $type = $turn[0];
+  global $gamestate, $CardStats_TimesPlayed, $CardStats_TimesActivated, $CardStats_TimesResourced;
+  global $TurnStats_CardsPitched, $TurnStats_CardsBlocked;
+  if($type == "") $type = $gamestate->turn[0];
   $cardStats = &GetCardStats($player);
   $turnStats = &GetTurnStats($player);
   $baseIndex = ($currentRound-1) * TurnStatPieces();
@@ -59,7 +59,7 @@ function LogPlayCardStats($player, $cardID, $from, $type="")
 
 function LogResourcesUsedStats($player, $resourcesUsed)
 {
-  global $currentRound, $TurnStats_ResourcesUsed;
+  global $gamestate, $TurnStats_ResourcesUsed;
   $turnStats = &GetTurnStats($player);
   $baseIndex = ($currentRound-1) * TurnStatPieces();
   if(count($turnStats) <= $baseIndex) StatsStartTurn();
@@ -68,7 +68,7 @@ function LogResourcesUsedStats($player, $resourcesUsed)
 
 function LogDamageStats($player, $damageThreatened, $damageDealt)
 {
-  global $currentRound, $TurnStats_DamageThreatened, $TurnStats_DamageDealt;
+  global $gamestate, $TurnStats_DamageThreatened, $TurnStats_DamageDealt;
   $baseIndex = ($currentRound-1) * TurnStatPieces();
   $damagerStats = &GetTurnStats($player == 1 ? 2 : 1);
   if(count($damagerStats) <= $baseIndex) StatsStartTurn();
@@ -78,9 +78,9 @@ function LogDamageStats($player, $damageThreatened, $damageDealt)
 
 function LogCombatResolutionStats($damageThreatened, $damageBlocked)
 {
-  global $currentRound, $mainPlayer, $defPlayer, $TurnStats_DamageThreatened, $TurnStats_DamageBlocked, $TurnStats_Overblock;
+  global $gamestate, $defPlayer, $TurnStats_DamageThreatened, $TurnStats_DamageBlocked, $TurnStats_Overblock;
   $baseIndex = ($currentRound-1) * TurnStatPieces();
-  $mainStats = &GetTurnStats($mainPlayer);
+  $mainStats = &GetTurnStats($gamestate->mainPlayer);
   $defStats = &GetTurnStats($defPlayer);
   if(count($mainStats) <= $baseIndex) StatsStartTurn();
   if(count($defStats) <= $baseIndex) StatsStartTurn();
@@ -91,7 +91,7 @@ function LogCombatResolutionStats($damageThreatened, $damageBlocked)
 
 function LogEndTurnStats($player)
 {
-  global $currentRound, $TurnStats_ResourcesLeft, $TurnStats_CardsLeft;
+  global $gamestate, $TurnStats_ResourcesLeft, $TurnStats_CardsLeft;
   $turnStats = &GetTurnStats($player);
   $baseIndex = ($currentRound-1) * TurnStatPieces();
   if(count($turnStats) <= $baseIndex) StatsStartTurn();

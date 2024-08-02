@@ -108,9 +108,9 @@ if ($deckTestMode != "") {
   $p2IsAI = "0";
 }
 $firstPlayerChooser = "";
-$firstPlayer = 1;
-$p1Key = hash("sha256", rand() . rand());
-$p2Key = hash("sha256", rand() . rand() . rand());
+$gamestate->firstPlayer = 1;
+$gamestate->p1Key = hash("sha256", rand() . rand());
+$gamestate->p2Key = hash("sha256", rand() . rand() . rand());
 $p1uid = "-";
 $p2uid = "-";
 $p1id = "-";

@@ -3,15 +3,15 @@
 
  function ProcessHitEffect($cardID)
 {
-  global $mainPlayer, $attackState, $AS_DamageDealt, $defPlayer;
+  global $gamestate, $AS_DamageDealt, $defPlayer;
   switch($cardID)
   {
     case "0828695133"://Seventh Sister
       if(GetAttackTarget() == "THEIRCHAR-0") {
-        AddDecisionQueue("MULTIZONEINDICES", $mainPlayer, "THEIRALLY:arena=Ground");
-        AddDecisionQueue("SETDQCONTEXT", $mainPlayer, "Choose a card to deal 3 damage", 1);
-        AddDecisionQueue("MAYCHOOSEMULTIZONE", $mainPlayer, "<-", 1);
-        AddDecisionQueue("MZOP", $mainPlayer, "DEALDAMAGE,3", 1);
+        AddDecisionQueue("MULTIZONEINDICES", $gamestate->mainPlayer, "THEIRALLY:arena=Ground");
+        AddDecisionQueue("SETDQCONTEXT", $gamestate->mainPlayer, "Choose a card to deal 3 damage", 1);
+        AddDecisionQueue("MAYCHOOSEMULTIZONE", $gamestate->mainPlayer, "<-", 1);
+        AddDecisionQueue("MZOP", $gamestate->mainPlayer, "DEALDAMAGE,3", 1);
       }
       break;
     case "3280523224"://Rukh
@@ -23,7 +23,7 @@
       }
       break;
     case "87e8807695"://Leia Organa
-      AddCurrentTurnEffect("87e8807695", $mainPlayer);
+      AddCurrentTurnEffect("87e8807695", $gamestate->mainPlayer);
       break;
     default: break;
   }
@@ -31,36 +31,36 @@
 }
 
 function CompletesAttackEffect($cardID) {
-  global $mainPlayer, $defPlayer, $CS_NumLeftPlay;
+  global $gamestate, $defPlayer, $CS_NumLeftPlay;
   switch($cardID)
   {
     case "9560139036"://Ezra Bridger
-      AddCurrentTurnEffect("9560139036", $mainPlayer);
+      AddCurrentTurnEffect("9560139036", $gamestate->mainPlayer);
       break;
     case "0e65f012f5"://Boba Fett
-      if(GetClassState($defPlayer, $CS_NumLeftPlay) > 0) ReadyResource($mainPlayer, 2);
+      if(GetClassState($defPlayer, $CS_NumLeftPlay) > 0) ReadyResource($gamestate->mainPlayer, 2);
       break;
     case "9647945674"://Zeb Orrelios
       if(GetAttackTarget() == "NA") {//This means the target was defeated
-        AddDecisionQueue("MULTIZONEINDICES", $mainPlayer, "THEIRALLY:arena=Ground");
-        AddDecisionQueue("SETDQCONTEXT", $mainPlayer, "Choose a unit to deal 4 damage to");
-        AddDecisionQueue("MAYCHOOSEMULTIZONE", $mainPlayer, "<-", 1);
-        AddDecisionQueue("MZOP", $mainPlayer, "DEALDAMAGE,4", 1);
+        AddDecisionQueue("MULTIZONEINDICES", $gamestate->mainPlayer, "THEIRALLY:arena=Ground");
+        AddDecisionQueue("SETDQCONTEXT", $gamestate->mainPlayer, "Choose a unit to deal 4 damage to");
+        AddDecisionQueue("MAYCHOOSEMULTIZONE", $gamestate->mainPlayer, "<-", 1);
+        AddDecisionQueue("MZOP", $gamestate->mainPlayer, "DEALDAMAGE,4", 1);
       }
       break;
     case "0518313150"://Embo
       if(GetAttackTarget() == "NA") {//This means the target was defeated
-        AddDecisionQueue("MULTIZONEINDICES", $mainPlayer, "MYALLY&THEIRALLY");
-        AddDecisionQueue("SETDQCONTEXT", $mainPlayer, "Choose a unit to restore 2 damage");
-        AddDecisionQueue("MAYCHOOSEMULTIZONE", $mainPlayer, "<-", 1);
-        AddDecisionQueue("MZOP", $mainPlayer, "RESTORE,2", 1);
+        AddDecisionQueue("MULTIZONEINDICES", $gamestate->mainPlayer, "MYALLY&THEIRALLY");
+        AddDecisionQueue("SETDQCONTEXT", $gamestate->mainPlayer, "Choose a unit to restore 2 damage");
+        AddDecisionQueue("MAYCHOOSEMULTIZONE", $gamestate->mainPlayer, "<-", 1);
+        AddDecisionQueue("MZOP", $gamestate->mainPlayer, "RESTORE,2", 1);
       }
       break;
     case "1086021299"://Arquitens Assault Cruiser
       if(GetAttackTarget() == "NA") {//This means the target was defeated
         $discard = &GetDiscard($defPlayer);
         $defeatedCard = RemoveDiscard($defPlayer, count($discard)-DiscardPieces());
-        AddResources($defeatedCard, $mainPlayer, "PLAY", "DOWN");
+        AddResources($defeatedCard, $gamestate->mainPlayer, "PLAY", "DOWN");
       }
       break;
     default: break;
@@ -69,23 +69,23 @@ function CompletesAttackEffect($cardID) {
 
 function AttackModifier($cardID, $player, $index)
 {
-  global $mainPlayer, $defPlayer, $initiativePlayer, $attackState, $CS_NumLeftPlay;
+  global $gamestate, $defPlayer, $CS_NumLeftPlay;
   $modifier = 0;
-  if($player == $mainPlayer) {
+  if($player == $gamestate->mainPlayer) {
     //Raid is only for attackers
-    $attacker = AttackerMZID($mainPlayer);
+    $attacker = AttackerMZID($gamestate->mainPlayer);
     $mzArr = explode("-", $attacker);
-    if($mzArr[1] == $index) $modifier = RaidAmount($cardID, $mainPlayer, $mzArr[1]);
+    if($mzArr[1] == $index) $modifier = RaidAmount($cardID, $gamestate->mainPlayer, $mzArr[1]);
   }
   switch($cardID) {
     case "3988315236"://Seasoned Shoretrooper
       $modifier += NumResources($player) >= 6 ? 2 : 0;
       break;
     case "7922308768"://Valiant Assault Ship
-      $modifier += $player == $mainPlayer && NumResources($mainPlayer) < NumResources($defPlayer) ? 2 : 0;
+      $modifier += $player == $gamestate->mainPlayer && NumResources($gamestate->mainPlayer) < NumResources($defPlayer) ? 2 : 0;
       break;
     case "6348804504"://Ardent Sympathizer
-      $modifier += $initiativePlayer == $player ? 2 : 0;
+      $modifier += $gamestate->initiativePlayer == $player ? 2 : 0;
       break;
     case "4619930426"://First Legion Snowtrooper
       if(!AttackIsOngoing() || $player == $defPlayer) break;
@@ -105,7 +105,7 @@ function AttackModifier($cardID, $player, $index)
       if($player == $defPlayer && GetAttackTarget() == "THEIRALLY-" . $index) $modifier += 2;
       break;
     case "6769342445"://Jango Fett
-      if(IsAllyAttackTarget() && $player == $mainPlayer) {
+      if(IsAllyAttackTarget() && $player == $gamestate->mainPlayer) {
         $ally = new Ally(GetAttackTarget(), $defPlayer);
         if($ally->HasBounty()) $modifier += 3;
       }
@@ -124,7 +124,7 @@ function AttackModifier($cardID, $player, $index)
       if(count($costs) >= 5) $modifier += 3;
       break;
     case "8305828130"://Warbird Stowaway
-        $modifier += $initiativePlayer == $player ? 2 : 0;
+        $modifier += $gamestate->initiativePlayer == $player ? 2 : 0;
         break;
     default: break;
   }

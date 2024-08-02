@@ -122,7 +122,7 @@
 
   function CardStats($player)
   {
-    global $TurnStats_DamageThreatened, $TurnStats_DamageDealt, $TurnStats_CardsPlayedOffense, $TurnStats_CardsPlayedDefense, $TurnStats_CardsPitched, $TurnStats_CardsBlocked, $firstPlayer;
+    global $TurnStats_DamageThreatened, $TurnStats_DamageDealt, $TurnStats_CardsPlayedOffense, $TurnStats_CardsPlayedDefense, $TurnStats_CardsPitched, $TurnStats_CardsBlocked, $gamestate;
     global $TurnStats_ResourcesUsed, $TurnStats_CardsLeft, $TurnStats_DamageBlocked;
     $cardStats = &GetCardStats($player);
     $rv = "<div style='float:left;'>";
@@ -150,7 +150,7 @@
     $turnStats = &GetTurnStats($player);
     $rv .= "<div style='float:left;'>";
     $rv .= "<h2>Turn Stats</h2>";
-    if($player == $firstPlayer) $rv .= "<i>First turn omitted for first player.</i><br>";
+    if($player == $gamestate->firstPlayer) $rv .= "<i>First turn omitted for first player.</i><br>";
     //Damage stats
     $totalDamageThreatened = 0;
     $totalDamageDealt = 0;
@@ -159,7 +159,7 @@
     $totalDefensiveCards = 0;
     $totalBlocked = 0;
     $numTurns = 0;
-    $start = ($player == $firstPlayer ? TurnStatPieces() : 0);//Skip first turn for first player
+    $start = ($player == $gamestate->firstPlayer ? TurnStatPieces() : 0);//Skip first turn for first player
     if(count($turnStats) > 0)
     {
       for($i=$start; $i<count($turnStats); $i+=TurnStatPieces())
@@ -222,41 +222,11 @@
     }
   }
 
-  function BanishUI($from="")
-  {
-    global $turn, $currentPlayer, $playerID, $cardSize;
-    $rv = "";
-    $size = ($from == "HAND" ? $cardSize : 180);
-    $banish = GetBanish($playerID);
-    for($i=0; $i<count($banish); $i+=BanishPieces()) {
-      $action = $currentPlayer == $playerID && IsPlayable($banish[$i], $turn[0], "BANISH", $i) ? 14 : 0;
-      $border = CardBorderColor($banish[$i], "BANISH", $action > 0);
-      $mod = explode("-", $banish[$i+1])[0];
-      if($mod == "INT") $rv .= Card($banish[$i], "CardImages", $size, 0, 1, 1);//Display intimidated cards grayed out and unplayable
-      else if($mod == "TCL" || $mod == "TT" || $mod == "TCC" || $mod == "NT" || $mod == "INST" || $mod == "MON212" || $mod == "ARC119")
-        $rv .= Card($banish[$i], "CardImages", $size, $action, 1, 0, $border, 0, strval($i));//Display banished cards that are playable
-      else if($from != "HAND")
-      {
-        if(PlayableFromBanish($banish[$i], $banish[$i+1]) || AbilityPlayableFromBanish($banish[$i]))
-          $rv .= Card($banish[$i], "CardImages", $size, $action, 1, 0, $border, 0, strval($i));
-        else
-          $rv .= Card($banish[$i], "CardImages", $size, 0, 1, 0, $border);
-      }
-    }
-    return $rv;
-  }
-
   function CardBorderColor($cardID, $from, $isPlayable)
   {
-    global $playerID, $currentPlayer, $turn;
-    if($playerID != $currentPlayer) return 0;
-    if($turn[0] == "B") return ($isPlayable ? 6 : 0);
-    if($from == "BANISH")
-    {
-      if($isPlayable || PlayableFromBanish($cardID)) return 4;
-      return 0;
-    }
-    if($isPlayable && HasReprise($cardID) && RepriseActive()) return 3;
+    global $playerID, $gamestate;
+    if($playerID != $gamestate->currentPlayer) return 0;
+    if($gamestate->turn[0] == "B") return ($isPlayable ? 6 : 0);
     else if($isPlayable) return 6;
     return 0;
   }

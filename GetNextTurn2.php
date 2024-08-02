@@ -34,6 +34,9 @@ if (($playerID == 1 || $playerID == 2) && $authKey == "") {
 include "HostFiles/Redirector.php";
 include "Libraries/SHMOPLibraries.php";
 include "WriteLog.php";
+include_once "Classes/Gamestate.php";
+
+$gamestate = new Gamestate();
 
 SetHeaders();
 
@@ -80,8 +83,8 @@ while ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
       GamestateUpdated($gameName);
     }
     //Handle server timeout
-    $lastUpdateTime = $cacheArr[5];
-    if ($currentTime - $lastUpdateTime > 90000 && $cacheArr[11] != "1")//90 seconds
+    $gamestate->lastUpdateTime = $cacheArr[5];
+    if ($currentTime - $gamestate->lastUpdateTime > 90000 && $cacheArr[11] != "1")//90 seconds
     {
       SetCachePiece($gameName, 12, "1");
       $opponentInactive = true;
@@ -104,19 +107,18 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
   include "Libraries/StatFunctions.php";
   include "Libraries/PlayerSettings.php";
 
-  if ($turn[0] == "REMATCH" && intval($playerID) != 3) {
+  if ($gamestate->turn[0] == "REMATCH" && intval($playerID) != 3) {
     include "MenuFiles/ParseGamefile.php";
     include "MenuFiles/WriteGamefile.php";
     if ($gameStatus == $MGS_GameStarted) {
-      include "AI/CombatDummy.php";
       $origDeck = "./Games/" . $gameName . "/p1DeckOrig.txt";
       if (file_exists($origDeck)) copy($origDeck, "./Games/" . $gameName . "/p1Deck.txt");
       $origDeck = "./Games/" . $gameName . "/p2DeckOrig.txt";
       if (file_exists($origDeck)) copy($origDeck, "./Games/" . $gameName . "/p2Deck.txt");
       $gameStatus = (IsPlayerAI(2) ? $MGS_ReadyToStart : $MGS_ChooseFirstPlayer);
       SetCachePiece($gameName, 14, $gameStatus);
-      $firstPlayer = 1;
-      $firstPlayerChooser = ($winner == 1 ? 2 : 1);
+      $gamestate->firstPlayer = 1;
+      $firstPlayerChooser = ($gamestate->winner == 1 ? 2 : 1);
       unlink("./Games/" . $gameName . "/gamestate.txt");
 
       $errorFileName = "./BugReports/CreateGameFailsafe.txt";
@@ -137,16 +139,16 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
     exit;
   }
 
-  $targetAuth = ($playerID == 1 ? $p1Key : $p2Key);
+  $targetAuth = ($playerID == 1 ? $gamestate->p1Key : $gamestate->p2Key);
   if ($playerID != 3 && $authKey != $targetAuth) {
     echo ("999999" . $returnDelim);
     exit;
   }
 
   echo($cacheVal . $returnDelim);
-  echo(implode("~", $events) . $returnDelim);
+  echo(implode("~", $gamestate->events) . $returnDelim);
   
-  if ($currentPlayer == $playerID) {
+  if ($gamestate->currentPlayer == $playerID) {
     $icon = "ready.png";
     $readyText = "You are the player with priority.";
   } else {
@@ -154,7 +156,7 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
     $readyText = "The other player has priority.";
   }
 
-  if (count($turn) == 0) {
+  if (count($gamestate->turn) == 0) {
     RevertGamestate();
     GamestateUpdated($gameName);
     exit();
@@ -294,7 +296,7 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
   echo (($manualMode ? "<span style='position:absolute; top:0px; left:65px;'>" . CreateButton($playerID, "+1", 10008, 0, "20px") . CreateButton($playerID, "-1", 10007, 0, "20px") . "</span>" : ""));
   echo ("</div></div>");
   echo ("<div style='position:absolute; top:37px; left:-130px; z-index:-5;'></div>");
-  if ($turn[0] == "ARS" || (count($layers) > 0 && $layers[0] == "ENDTURN")) {
+  if ($gamestate->turn[0] == "ARS" || (count($gamestate->layers) > 0 && $gamestate->layers[0] == "ENDTURN")) {
     $passLabel = "End Turn";
     $fontSize = 30;
     $left = 65;
@@ -312,7 +314,7 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
     $top = 15;
   }
 
-  if($initiativePlayer == $playerID || ($playerID == 3 && $initiativePlayer == 2)) {
+  if($gamestate->initiativePlayer == $playerID || ($playerID == 3 && $gamestate->initiativePlayer == 2)) {
     echo ("<div class='my-initiative'><span>Initiative</span>");
   } else {
     echo ("<div class='their-initiative'><span>Initiative</span>");
@@ -326,21 +328,21 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
   echo (($manualMode ? "<span style='position:relative; top: 5px; z-index:10; color: " . $fontColor . "; font-family:Helvetica; font-size:18px; font-weight: 550;text-shadow: 2px 0 0 " . $borderColor . ", 0 -2px 0 " . $borderColor . ", 0 2px 0 " . $borderColor . ", -2px 0 0 " . $borderColor . ";'>Add to hand: </span><input style='width: 100px;' id='manualAddCardToHand' type='text' /><input type='button' style='position:relative; font-size: 14px; top:0; left:0; bottom: 5px; box-shadow: none;' value='Add' onclick='AddCardToHand()' />&nbsp;" : ""));
 
   //Tell the player what to pick
-  if ($turn[0] != "OVER") {
-    $helpText = ($currentPlayer != $playerID ? " Waiting for other player to choose " . TypeToPlay($turn[0]) . "&nbsp" : " " . GetPhaseHelptext() . "&nbsp;");
+  if ($gamestate->turn[0] != "OVER") {
+    $helpText = ($gamestate->currentPlayer != $playerID ? " Waiting for other player to choose " . TypeToPlay($gamestate->turn[0]) . "&nbsp" : " " . GetPhaseHelptext() . "&nbsp;");
 
     echo ("<span style='font-size:18px;'><img height='16px;' style='margin-right:5px; vertical-align: -2px; user-select: none;' title='" . $readyText . "' src='./Images/" . $icon . "'/>");
-    if ($currentPlayer == $playerID) {
+    if ($gamestate->currentPlayer == $playerID) {
       echo ($helpText);
-      if ($turn[0] == "P" || $turn[0] == "CHOOSEHANDCANCEL" || $turn[0] == "CHOOSEDISCARDCANCEL") echo ("(" . ($turn[0] == "P" ? $myResources[0] . " of " . $myResources[1] . " " : "") . "or " . CreateButton($playerID, "Cancel", 10000, 0, "18px") . ")");
-      if (CanPassPhase($turn[0])) {
-        if ($turn[0] == "B") echo (CreateButton($playerID, "Undo Block", 10001, 0, "18px") . " " . CreateButton($playerID, "Pass", 99, 0, "18px") . " " . CreateButton($playerID, "Pass Block and Reactions", 101, 0, "16px", "", "Reactions will not be skipped if the opponent reacts"));
+      if ($gamestate->turn[0] == "P" || $gamestate->turn[0] == "CHOOSEHANDCANCEL" || $gamestate->turn[0] == "CHOOSEDISCARDCANCEL") echo ("(" . ($gamestate->turn[0] == "P" ? $myResources[0] . " of " . $myResources[1] . " " : "") . "or " . CreateButton($playerID, "Cancel", 10000, 0, "18px") . ")");
+      if (CanPassPhase($gamestate->turn[0])) {
+        if ($gamestate->turn[0] == "B") echo (CreateButton($playerID, "Undo Block", 10001, 0, "18px") . " " . CreateButton($playerID, "Pass", 99, 0, "18px") . " " . CreateButton($playerID, "Pass Block and Reactions", 101, 0, "16px", "", "Reactions will not be skipped if the opponent reacts"));
       }
       if ($opponentDisconnected == true && $playerID != 3) {
         echo (CreateButton($playerID, "Claim Victory", 100007, 0, "18px", "", "claimVictoryButton"));
       }
     } else {
-      if (($currentPlayerActivity == 2 || $opponentDisconnected == true) && $playerID != 3) {
+      if (($gamestate->currentPlayerActivity == 2 || $opponentDisconnected == true) && $playerID != 3) {
         echo ("Opponent is inactive " . CreateButton($playerID, "Claim Victory", 100007, 0, "18px", "", "claimVictoryButton"));
       } else {
         echo ($helpText);
@@ -350,7 +352,7 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
   }
   if (IsManualMode($playerID)) echo ("&nbsp;" . CreateButton($playerID, "Turn Off Manual Mode", 26, $SET_ManualMode . "-0", "18px", "", "", true));
 
-  if ((CanPassPhase($turn[0]) && $currentPlayer == $playerID) || (IsReplay() && $playerID == 3)) {
+  if ((CanPassPhase($gamestate->turn[0]) && $gamestate->currentPlayer == $playerID) || (IsReplay() && $playerID == 3)) {
     $prompt = "";
     // Pass Button - Active then Inactive (which is hidden) 
 ?>
@@ -366,18 +368,18 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
   <?php
   }
   
-  if($turn[0] == "M" && $initiativeTaken != 1 && $currentPlayer == $playerID) echo ("&nbsp;" . CreateButton($playerID, "Claim Initiative", 34, "-", "18px"));
+  if($gamestate->turn[0] == "M" && $gamestate->initiativeTaken != 1 && $gamestate->currentPlayer == $playerID) echo ("&nbsp;" . CreateButton($playerID, "Claim Initiative", 34, "-", "18px"));
   
   echo ("</span>");
 
   //Deduplicate current turn effects
   $friendlyEffects = "";
   $opponentEffects = "";
-  for ($i = 0; $i < count($currentTurnEffects); $i += CurrentTurnPieces()) {
-    $cardID = explode("-", $currentTurnEffects[$i])[0];
+  for ($i = 0; $i < count($gamestate->currentTurnEffects); $i += CurrentTurnPieces()) {
+    $cardID = explode("-", $gamestate->currentTurnEffects[$i])[0];
     $cardID = explode(",", $cardID)[0];
     $cardID = explode("_", $cardID)[0];
-    $isFriendly = ($playerID == $currentTurnEffects[$i + 1] || $playerID == 3 && $otherPlayer != $currentTurnEffects[$i + 1]);
+    $isFriendly = ($playerID == $gamestate->currentTurnEffects[$i + 1] || $playerID == 3 && $otherPlayer != $gamestate->currentTurnEffects[$i + 1]);
     $color = ($isFriendly ? "#00BAFF" : "#FB0007"); // Me : Opponent
     $effect = "<div class='effect-display' style='border:1px solid " . $color . ";'>";
     $effect .= Card($cardID, "crops", 65, 0, 1);
@@ -414,7 +416,7 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
 
   // Triggers
 
-  if ($turn[0] == "CHOOSETRIGGERORDER" && count($layers) > 0) {
+  if ($gamestate->turn[0] == "CHOOSETRIGGERORDER" && count($gamestate->layers) > 0) {
       $content = "";
       
       // Add a title and instructions for triggers
@@ -431,7 +433,7 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
       }
   
       // Check if the first layer is an attack, and if so, get and display the attack target
-      if (CardType($layers[0]) == "AA") {
+      if (CardType($gamestate->layers[0]) == "AA") {
           $attackTarget = GetAttackTarget();
           if ($attackTarget != "NA") {
               $content .= "&nbsp;Attack Target: " . GetMZCardLink($defPlayer, $attackTarget);
@@ -439,14 +441,14 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
       }
   
       // Add a note about trigger resolution if applicable
-      if ($dqState[8] != -1) {
+      if ($gamestate->dqState[8] != -1) {
         $content .= "<div class='trigger-order'><p>Use the arrows below to set the order abilities trigger in</p></div>";
       }
   
       // Start the container for the tiles and labels using flexbox
       $content .= "<div class='tiles-wrapper' >";
   
-      $totalLayers = count($layers); // Total number of layers
+      $totalLayers = count($gamestate->layers); // Total number of layers
       $layerPieces = LayerPieces();  // Number of pieces per layer
   
       for ($i = 0; $i < $totalLayers; $i += $layerPieces) {
@@ -455,8 +457,8 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
               $content .= "<div class='trigger-first'><p>First</p></div>";
           }
   
-          $layerName = IsAbilityLayer($layers[$i]) ? $layers[$i + 2] : $layers[$i]; // Get the layer name
-          $layerController = $layers[$i + 1]; // Get the layer controller
+          $layerName = IsAbilityLayer($gamestate->layers[$i]) ? $gamestate->layers[$i + 2] : $gamestate->layers[$i]; // Get the layer name
+          $layerController = $gamestate->layers[$i + 1]; // Get the layer controller
           $layerColor = ($layerController == $playerID) ? 1 : 2; // Determine the color based on the controller
           
           if ($playerID == 3) { // Special case for playerID 3
@@ -464,25 +466,25 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
           }
   
           // Count the number of tiles with the same name if the layer is tileable
-          $nbTiles = IsTileable($layerName) ? array_reduce($layers, function($count, $layer, $index) use ($layerName, $layerPieces) {
-              $name = ($layer == "LAYER" || IsAbilityLayer($layer)) ? $layers[$index + 2] : $layer;
+          $nbTiles = IsTileable($layerName) ? array_reduce($gamestate->layers, function($count, $layer, $index) use ($layerName, $layerPieces) {
+              $name = ($layer == "LAYER" || IsAbilityLayer($layer)) ? $gamestate->layers[$index + 2] : $layer;
               return $name == $layerName ? $count + 1 : $count;
           }, 0) : 0;
   
           // Get the caption for the current layer
-          $caption = getCaption($layers[$i]);
+          $caption = getCaption($gamestate->layers[$i]);
           
           // Determine counters for the card, using number of tiles if tileable, otherwise using the caption
           $counters = IsTileable($layerName) && $nbTiles > 1 ? $nbTiles : ($caption ?: 0);
   
           // Add the card to the content
           $cardId = $layerName;
-          if($cardId == "AFTERPLAYABILITY") $cardId = explode(',', $layers[$i+5])[0];
+          if($cardId == "AFTERPLAYABILITY") $cardId = explode(',', $gamestate->layers[$i+5])[0];
           $content .= "<div class='tile' style='max-width:{$cardSize}px;'>" . Card($cardId, "concat", $cardSize, 0, 1, 0, $layerColor, $counters, controller: $layerController);
   
           // Add reorder buttons for ability layers if applicable
-          if (IsAbilityLayer($layers[$i]) && $dqState[8] >= $i && $playerID == $mainPlayer) {
-              if ($i < $dqState[8]) {
+          if (IsAbilityLayer($gamestate->layers[$i]) && $gamestate->dqState[8] >= $i && $playerID == $gamestate->mainPlayer) {
+              if ($i < $gamestate->dqState[8]) {
                   $content .= "<span class='reorder-button'>" . CreateButton($playerID, ">", 31, $i, "18px", useInput:true) . "</span>";
               }
               if ($i > 0) {
@@ -504,7 +506,7 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
       echo CreatePopup("CHOOSETRIGGERORDER", [], 0, 1, "", 1, $content, "./", false, true); // Output the content in a popup
   }
   
-  if ($turn[0] == "OVER") {
+  if ($gamestate->turn[0] == "OVER") {
     if ($roguelikeGameID != "") {
       $caption = (GetHealth($playerID) > 0 ? "Continue Adventure" : "Game Over");
       if(GetHealth($playerID) > 0) $content = CreateButton($playerID, "Continue Adventure", 100011, 0, "24px", "", "", false, true);
@@ -515,34 +517,34 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
       if ($playerID == 1) $content .= "&nbsp;" . CreateButton($playerID, "Quick Rematch", 100000, 0, "24px");
       //if ($playerID != 3 && IsPatron($playerID)) $content .= "&nbsp;" . CreateButton($playerID, "Save Replay", 100012, 0, "24px");
       if ($playerID != 3) {
-        $time = ($playerID == 1 ? $p1TotalTime : $p2TotalTime);
-        $totalTime = $p1TotalTime + $p2TotalTime;
+        $time = ($playerID == 1 ? $gamestate->p1TotalTime : $gamestate->p1TotalTime);
+        $totalTime = $gamestate->p1TotalTime + $gamestate->p1TotalTime;
         $content .= "<BR><span class='Time-Span'>Your Play Time: " . intval($time / 60) . "m" . $time % 60 . "s - Game Time: " . intval($totalTime / 60) . "m" . $totalTime % 60 . "s</span>";
       }
     }
 
     $content .= "</div>";
     $content .= CardStats($playerID);
-    echo CreatePopup("OVER", [], 1, 1, "Player " . $winner . " Won! ", 1, $content, "./", true);
+    echo CreatePopup("OVER", [], 1, 1, "Player " . $gamestate->winner . " Won! ", 1, $content, "./", true);
   }
 
-  if ($turn[0] == "DYNPITCH" && $turn[1] == $playerID) {
+  if ($gamestate->turn[0] == "DYNPITCH" && $gamestate->turn[1] == $playerID) {
     $content = "<div display:inline;'>";
-    $options = explode(",", $turn[2]);
+    $options = explode(",", $gamestate->turn[2]);
     for ($i = 0; $i < count($options); ++$i) {
       $content .= CreateButton($playerID, $options[$i], 7, $options[$i], "24px");
     }
     $content .= "</div>";
-    echo CreatePopup("DYNPITCH", [], 0, 1, "Choose " . TypeToPlay($turn[0]), 1, $content);
+    echo CreatePopup("DYNPITCH", [], 0, 1, "Choose " . TypeToPlay($gamestate->turn[0]), 1, $content);
   }
 
-  if (($turn[0] == "BUTTONINPUT" || $turn[0] == "CHOOSEARCANE" || $turn[0] == "BUTTONINPUTNOPASS") && $turn[1] == $playerID) {
+  if (($gamestate->turn[0] == "BUTTONINPUT" || $gamestate->turn[0] == "CHOOSEARCANE" || $gamestate->turn[0] == "BUTTONINPUTNOPASS") && $gamestate->turn[1] == $playerID) {
     $content = "<div display:inline;'>";
-    if ($turn[0] == "CHOOSEARCANE") {
-      $vars = explode("-", $dqVars[0]);
+    if ($gamestate->turn[0] == "CHOOSEARCANE") {
+      $vars = explode("-", $gamestate->dqVars[0]);
       $content .= "<div>Source: " . CardLink($vars[1], $vars[1]) . " Total Damage: " . $vars[0] . "</div>";
     }
-    $options = explode(",", $turn[2]);
+    $options = explode(",", $gamestate->turn[2]);
     for ($i = 0; $i < count($options); ++$i) {
       $content .= CreateButton($playerID, str_replace("_", " ", $options[$i]), 17, strval($options[$i]), "24px");
     }
@@ -550,32 +552,32 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
     echo CreatePopup("BUTTONINPUT", [], 0, 1, GetPhaseHelptext(), 1, $content);
   }
 
-  if ($turn[0] == "YESNO" && $turn[1] == $playerID) {
+  if ($gamestate->turn[0] == "YESNO" && $gamestate->turn[1] == $playerID) {
     $content = CreateButton($playerID, "Yes", 20, "YES", "20px");
     $content .= CreateButton($playerID, "No", 20, "NO", "20px");
     if (GetDQHelpText() != "-") $caption = implode(" ", explode("_", GetDQHelpText()));
-    else $caption = "Choose " . TypeToPlay($turn[0]);
+    else $caption = "Choose " . TypeToPlay($gamestate->turn[0]);
     echo CreatePopup("YESNO", [], 0, 1, $caption, 1, $content);
   }
 
-  if ($turn[0] == "OK" && $turn[1] == $playerID) {
+  if ($gamestate->turn[0] == "OK" && $gamestate->turn[1] == $playerID) {
     $content = CreateButton($playerID, "Ok", 99, "OK", "20px");
     if (GetDQHelpText() != "-") $caption = implode(" ", explode("_", GetDQHelpText()));
-    else $caption = "Choose " . TypeToPlay($turn[0]);
+    else $caption = "Choose " . TypeToPlay($gamestate->turn[0]);
     echo CreatePopup("OK", [], 0, 1, $caption, 1, $content);
   }
 
-  if (($turn[0] == "OPT" || $turn[0] == "CHOOSETOP" || $turn[0] == "MAYCHOOSETOP" || $turn[0] == "CHOOSEBOTTOM" || $turn[0] == "CHOOSECARD" || $turn[0] == "MAYCHOOSECARD") && $turn[1] == $playerID) {
+  if (($gamestate->turn[0] == "OPT" || $gamestate->turn[0] == "CHOOSETOP" || $gamestate->turn[0] == "MAYCHOOSETOP" || $gamestate->turn[0] == "CHOOSEBOTTOM" || $gamestate->turn[0] == "CHOOSECARD" || $gamestate->turn[0] == "MAYCHOOSECARD") && $gamestate->turn[1] == $playerID) {
     $content = "<table><tr>";
-    $options = explode(",", $turn[2]);
+    $options = explode(",", $gamestate->turn[2]);
     for ($i = 0; $i < count($options); ++$i) {
       $content .= "<td>";
       $content .= "<table><tr><td>";
       $content .= Card($options[$i], "concat", $cardSize, 0, 1);
       $content .= "</td></tr><tr><td>";
-      if ($turn[0] == "CHOOSETOP"  || $turn[0] == "MAYCHOOSETOP" || $turn[0] == "OPT") $content .= CreateButton($playerID, "Top", 8, $options[$i], "20px");
-      if ($turn[0] == "CHOOSEBOTTOM" || $turn[0] == "OPT") $content .= CreateButton($playerID, "Bottom", 9, $options[$i], "20px");
-      if ($turn[0] == "CHOOSECARD" || $turn[0] == "MAYCHOOSECARD") $content .= CreateButton($playerID, "Choose", 23, $options[$i], "20px");
+      if ($gamestate->turn[0] == "CHOOSETOP"  || $gamestate->turn[0] == "MAYCHOOSETOP" || $gamestate->turn[0] == "OPT") $content .= CreateButton($playerID, "Top", 8, $options[$i], "20px");
+      if ($gamestate->turn[0] == "CHOOSEBOTTOM" || $gamestate->turn[0] == "OPT") $content .= CreateButton($playerID, "Bottom", 9, $options[$i], "20px");
+      if ($gamestate->turn[0] == "CHOOSECARD" || $gamestate->turn[0] == "MAYCHOOSECARD") $content .= CreateButton($playerID, "Choose", 23, $options[$i], "20px");
       $content .= "</td></tr>";
       $content .= "</table>";
       $content .= "</td>";
@@ -584,25 +586,25 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
     echo CreatePopup("OPT", [], 0, 1, GetPhaseHelptext(), 1, $content);
   }
 
-  if (($turn[0] == "CHOOSETOPOPPONENT") && $turn[1] == $playerID) { //Use when you have to reorder the top of your opponent library e.g. Righteous Cleansing
+  if (($gamestate->turn[0] == "CHOOSETOPOPPONENT") && $gamestate->turn[1] == $playerID) { //Use when you have to reorder the top of your opponent library e.g. Righteous Cleansing
     $otherPlayer = ($playerID == 1 ? 2 : 1);
     $content = "<table><tr>";
-    $options = explode(",", $turn[2]);
+    $options = explode(",", $gamestate->turn[2]);
     for ($i = 0; $i < count($options); ++$i) {
       $content .= "<td>";
       $content .= "<table><tr><td>";
       $content .= Card($options[$i], "concat", $cardSize, 0, 1);
       $content .= "</td></tr><tr><td>";
-      if ($turn[0] == "CHOOSETOPOPPONENT") $content .= CreateButton($otherPlayer, "Top", 29, $options[$i], "20px");
+      if ($gamestate->turn[0] == "CHOOSETOPOPPONENT") $content .= CreateButton($otherPlayer, "Top", 29, $options[$i], "20px");
       $content .= "</td></tr>";
       $content .= "</table>";
       $content .= "</td>";
     }
     $content .= "</tr></table>";
-    echo CreatePopup("CHOOSETOPOPPONENT", [], 0, 1, "Choose " . TypeToPlay($turn[0]), 1, $content);
+    echo CreatePopup("CHOOSETOPOPPONENT", [], 0, 1, "Choose " . TypeToPlay($gamestate->turn[0]), 1, $content);
   }
 
-  if ($turn[0] == "HANDTOPBOTTOM" && $turn[1] == $playerID) {
+  if ($gamestate->turn[0] == "HANDTOPBOTTOM" && $gamestate->turn[1] == $playerID) {
     $content = "<table><tr>";
     for ($i = 0; $i < count($myHand); ++$i) {
       $content .= "<td>";
@@ -619,14 +621,14 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
       $content .= "</td>";
     }
     $content .= "</tr></table>";
-    echo CreatePopup("HANDTOPBOTTOM", [], 0, 1, "Choose " . TypeToPlay($turn[0]), 1, $content);
+    echo CreatePopup("HANDTOPBOTTOM", [], 0, 1, "Choose " . TypeToPlay($gamestate->turn[0]), 1, $content);
   }
 
   $mzChooseFromPlay = false;
   $optionsIndex = [];
-  if(($turn[0] == "MAYCHOOSEMULTIZONE" || $turn[0] == "CHOOSEMULTIZONE") && $turn[1] == $playerID) {
+  if(($gamestate->turn[0] == "MAYCHOOSEMULTIZONE" || $gamestate->turn[0] == "CHOOSEMULTIZONE") && $gamestate->turn[1] == $playerID) {
     $content = "<div display:inline;'>";
-    $options = explode(",", $turn[2]);
+    $options = explode(",", $gamestate->turn[2]);
     $mzChooseFromPlay = true;
     $otherPlayer = $playerID == 2 ? 1 : 2;
     $theirAllies = &GetAllies($otherPlayer);
@@ -636,7 +638,7 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
       $option = explode("-", $options[$i]);
       if ($option[0] == "MYCHAR") $source = $myCharacter;
       else if ($option[0] == "THEIRCHAR") $source = $theirCharacter;
-      else if ($option[0] == "LAYER") $source = $layers;
+      else if ($option[0] == "LAYER") $source = $gamestate->layers;
       else if ($option[0] == "MYHAND") $source = $myHand;
       else if ($option[0] == "THEIRHAND") $source = $theirHand;
       else if ($option[0] == "MYDISCARD") $source = $myDiscard;
@@ -663,7 +665,7 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
       if (str_starts_with($option[0], "MY")) $playerBorderColor = 1;
       else if (str_starts_with($option[0], "THEIR")) $playerBorderColor = 2;
       else if ($option[0] == "LAYER") {
-        $playerBorderColor = ($layers[$index + 1] == $playerID ? 1 : 2);
+        $playerBorderColor = ($gamestate->layers[$index + 1] == $playerID ? 1 : 2);
       }
 
       if ($option[0] == "THEIRARS" && $theirArsenal[$index + 1] == "DOWN") $card = $TheirCardBack;
@@ -693,29 +695,29 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
     if(!$mzChooseFromPlay) echo CreatePopup("CHOOSEMULTIZONE", [], 0, 1, GetPhaseHelptext(), 1, $content);
   }
 
-  if (($turn[0] == "MAYCHOOSEDECK" || $turn[0] == "CHOOSEDECK") && $turn[1] == $playerID) {
-    ChoosePopup($myDeck, $turn[2], 11, "Choose a card from your deck");
+  if (($gamestate->turn[0] == "MAYCHOOSEDECK" || $gamestate->turn[0] == "CHOOSEDECK") && $gamestate->turn[1] == $playerID) {
+    ChoosePopup($myDeck, $gamestate->turn[2], 11, "Choose a card from your deck");
   }
 
-  if (($turn[0] == "CHOOSETHEIRHAND") && $turn[1] == $playerID) {
-    ChoosePopup($theirHand, $turn[2], 16, "Choose a card from your opponent's hand");
+  if (($gamestate->turn[0] == "CHOOSETHEIRHAND") && $gamestate->turn[1] == $playerID) {
+    ChoosePopup($theirHand, $gamestate->turn[2], 16, "Choose a card from your opponent's hand");
   }
 
-  if (($turn[0] == "CHOOSEDISCARD" || $turn[0] == "MAYCHOOSEDISCARD" || $turn[0] == "CHOOSEDISCARDCANCEL") && $turn[1] == $playerID) {
+  if (($gamestate->turn[0] == "CHOOSEDISCARD" || $gamestate->turn[0] == "MAYCHOOSEDISCARD" || $gamestate->turn[0] == "CHOOSEDISCARDCANCEL") && $gamestate->turn[1] == $playerID) {
     $caption = "Choose a card from your discard";
     if (GetDQHelpText() != "-") $caption = implode(" ", explode("_", GetDQHelpText()));
-    ChoosePopup($myDiscard, $turn[2], 16, $caption, zoneSize:DiscardPieces());
+    ChoosePopup($myDiscard, $gamestate->turn[2], 16, $caption, zoneSize:DiscardPieces());
   }
 
-  if (($turn[0] == "MAYCHOOSETHEIRDISCARD") && $turn[1] == $playerID) {
-    ChoosePopup($theirDiscard, $turn[2], 16, "Choose a card from your opponent's graveyard", zoneSize:DiscardPieces());
+  if (($gamestate->turn[0] == "MAYCHOOSETHEIRDISCARD") && $gamestate->turn[1] == $playerID) {
+    ChoosePopup($theirDiscard, $gamestate->turn[2], 16, "Choose a card from your opponent's graveyard", zoneSize:DiscardPieces());
   }
 
-  if (($turn[0] == "MULTICHOOSETHEIRDISCARD" || $turn[0] == "MULTICHOOSEDISCARD" || $turn[0] == "MULTICHOOSEHAND" || $turn[0] == "MAYMULTICHOOSEHAND" || $turn[0] == "MULTICHOOSEUNIT" || $turn[0] == "MULTICHOOSETHEIRUNIT" || $turn[0] == "MULTICHOOSEDECK" || $turn[0] == "MULTICHOOSETEXT" || $turn[0] == "MAYMULTICHOOSETEXT" || $turn[0] == "MULTICHOOSETHEIRDECK" || $turn[0] == "MAYMULTICHOOSEAURAS") && $currentPlayer == $playerID) {
+  if (($gamestate->turn[0] == "MULTICHOOSETHEIRDISCARD" || $gamestate->turn[0] == "MULTICHOOSEDISCARD" || $gamestate->turn[0] == "MULTICHOOSEHAND" || $gamestate->turn[0] == "MAYMULTICHOOSEHAND" || $gamestate->turn[0] == "MULTICHOOSEUNIT" || $gamestate->turn[0] == "MULTICHOOSETHEIRUNIT" || $gamestate->turn[0] == "MULTICHOOSEDECK" || $gamestate->turn[0] == "MULTICHOOSETEXT" || $gamestate->turn[0] == "MAYMULTICHOOSETEXT" || $gamestate->turn[0] == "MULTICHOOSETHEIRDECK" || $gamestate->turn[0] == "MAYMULTICHOOSEAURAS") && $gamestate->currentPlayer == $playerID) {
     $content = "";
     $multiAllies = &GetAllies($playerID);
     echo ("<div 'display:inline; width: 100%;'>");
-    $params = explode("-", $turn[2]);
+    $params = explode("-", $gamestate->turn[2]);
     $options = explode(",", $params[1]);
     $caption = "<div>Choose up to " . $params[0] . " card" . ($params[0] > 1 ? "s." : ".") . "</div>";
     if (GetDQHelpText() != "-") $caption = "<div>" . implode(" ", explode("_", GetDQHelpText())) . "</div>";
@@ -730,17 +732,17 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
     for ($i = 0; $i < count($options); ++$i) {
       $content .= "<td>";
       $content .= "<div class='container'>";
-      if ($turn[0] == "MULTICHOOSEDISCARD") $content .= "<label class='multichoose' for=chk" . $i . ">" . Card($myDiscard[$options[$i]], "concat", $cardSize, 0, 1) . "</label>";
-      else if ($turn[0] == "MULTICHOOSETHEIRDISCARD") $content .= "<label class='multichoose' for=chk" . $i . ">" . Card($theirDiscard[$options[$i]], "concat", $cardSize, 0, 1) . "</label>";
-      else if ($turn[0] == "MULTICHOOSEHAND" || $turn[0] == "MAYMULTICHOOSEHAND") $content .= "<label class='multichoose' for=chk" . $i . ">" . Card($myHand[$options[$i]], "concat", $cardSize, 0, 1) . "</label>";
-      else if ($turn[0] == "MULTICHOOSEUNIT") $content .= "<label class='multichoose' for=chk" . $i . ">" . Card($multiAllies[$options[$i]], "concat", $cardSize, 0, 1) . "</label>";
-      else if ($turn[0] == "MULTICHOOSETHEIRUNIT") {
+      if ($gamestate->turn[0] == "MULTICHOOSEDISCARD") $content .= "<label class='multichoose' for=chk" . $i . ">" . Card($myDiscard[$options[$i]], "concat", $cardSize, 0, 1) . "</label>";
+      else if ($gamestate->turn[0] == "MULTICHOOSETHEIRDISCARD") $content .= "<label class='multichoose' for=chk" . $i . ">" . Card($theirDiscard[$options[$i]], "concat", $cardSize, 0, 1) . "</label>";
+      else if ($gamestate->turn[0] == "MULTICHOOSEHAND" || $gamestate->turn[0] == "MAYMULTICHOOSEHAND") $content .= "<label class='multichoose' for=chk" . $i . ">" . Card($myHand[$options[$i]], "concat", $cardSize, 0, 1) . "</label>";
+      else if ($gamestate->turn[0] == "MULTICHOOSEUNIT") $content .= "<label class='multichoose' for=chk" . $i . ">" . Card($multiAllies[$options[$i]], "concat", $cardSize, 0, 1) . "</label>";
+      else if ($gamestate->turn[0] == "MULTICHOOSETHEIRUNIT") {
         $multiTheirAllies = &GetAllies($playerID == 1 ? 2 : 1);
         $content .= "<label class='multichoose' for=chk" . $i . ">" . Card($multiTheirAllies[$options[$i]], "concat", $cardSize, 0, 1) . "</label>";
       }
-      else if ($turn[0] == "MULTICHOOSEDECK") $content .= "<label class='multichoose' for=chk" . $i . ">" . Card($myDeck[$options[$i]], "concat", $cardSize, 0, 1) . "</label>";
-      else if ($turn[0] == "MULTICHOOSETHEIRDECK") $content .= "<label class='multichoose' for=chk" . $i . ">" . Card($theirDeck[$options[$i]], "concat", $cardSize, 0, 1) . "</label>";
-      else if ($turn[0] == "MULTICHOOSETEXT" || $turn[0] == "MAYMULTICHOOSETEXT") $content .= implode(" ", explode("_", strval($options[$i])));
+      else if ($gamestate->turn[0] == "MULTICHOOSEDECK") $content .= "<label class='multichoose' for=chk" . $i . ">" . Card($myDeck[$options[$i]], "concat", $cardSize, 0, 1) . "</label>";
+      else if ($gamestate->turn[0] == "MULTICHOOSETHEIRDECK") $content .= "<label class='multichoose' for=chk" . $i . ">" . Card($theirDeck[$options[$i]], "concat", $cardSize, 0, 1) . "</label>";
+      else if ($gamestate->turn[0] == "MULTICHOOSETEXT" || $gamestate->turn[0] == "MAYMULTICHOOSETEXT") $content .= implode(" ", explode("_", strval($options[$i])));
       $content .= "<div class='overlay'><div class='text'>Select</div></div></div>";
       $content .= "</td>";
     }
@@ -748,7 +750,7 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
     echo CreatePopup("MULTICHOOSE", [], 0, 1, $caption, 1, $content);
   }
 
-  if($turn[0] == "INPUTCARDNAME" && $turn[1] == $playerID)
+  if($gamestate->turn[0] == "INPUTCARDNAME" && $gamestate->turn[1] == $playerID)
   {
     $caption = "<div>Enter a card name or ID</div>";
     $content = CreateTextForm($playerID, "Submit", 30);
@@ -766,13 +768,10 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
     else $handContents .= ClientRenderedCard(cardNumber: $TheirCardBack, controller: ($playerID == 1 ? 2 : 1));
   }
   echo ($handContents);
-  $banishUI = TheirBanishUIMinimal("HAND");
-  if ($handContents != "" && $banishUI != "") echo ("|");
-  echo ($banishUI);
   echo ("</div>");
   echo ("</div>");
 
-  //Show deck, discard, pitch, banish
+  //Show deck and discard
   //Display Their Discard
   if (count($theirDiscard) > 0) {
     echo ("<div class= 'their-discard' title='Click to view the cards in your opponent's Graveyard.' style='cursor:pointer;' onclick='TogglePopup(\"theirDiscardPopup\");'>");
@@ -843,7 +842,7 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
   echo ("<div id='theirChar'>");
   $characterContents = "";
   for ($i = 0; $i < count($theirCharacter); $i += CharacterPieces()) {
-    if ($i > 0 && $inGameStatus == "0") continue;
+    if ($i > 0 && $gamestate->inGameStatus == "0") continue;
     $mzIndex = "THEIRCHAR-" . $i;
     $inOptions = in_array($mzIndex, $optionsIndex);
     $action = $mzChooseFromPlay && $inOptions ? 16 : 0;
@@ -896,8 +895,8 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
   echo ("</div>");
 
   $restriction = "";
-  $actionType = $turn[0] == "ARS" ? 4 : 27;
-  if (str_contains($turn[0], "CHOOSEHAND") && ($turn[0] != "" || $turn[0] != "MAYMULTICHOOSEHAND")) $actionType = 16;
+  $actionType = $gamestate->turn[0] == "ARS" ? 4 : 27;
+  if (str_contains($gamestate->turn[0], "CHOOSEHAND") && ($gamestate->turn[0] != "" || $gamestate->turn[0] != "MAYMULTICHOOSEHAND")) $actionType = 16;
   $handLeft = "calc(50% - " . ((count($myHand) * ($cardWidth + 15)) / 2) . "px - 119px)";
   echo ("<div id='myHand' style='display:none; position:fixed; left:" . $handLeft . "; bottom: 80px; z-index:100;'>"); //Hand div
   $handContents = "";
@@ -914,10 +913,10 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
         $actionDataOverride = $inOptions ? $mzIndex : 0;
         $border = CardBorderColor($myHand[$i], "HAND", $actionTypeOut == 16);
       } else {
-        if ($playerID == $currentPlayer) $playable = $turn[0] == "ARS" || ($actionType == 16 && str_contains("," . $turn[2] . ",", "," . $i . ",")) || $turn[0] == "M" && IsPlayable($myHand[$i], $turn[0], "HAND", -1, $restriction);
+        if ($playerID == $gamestate->currentPlayer) $playable = $gamestate->turn[0] == "ARS" || ($actionType == 16 && str_contains("," . $gamestate->turn[2] . ",", "," . $i . ",")) || $gamestate->turn[0] == "M" && IsPlayable($myHand[$i], $gamestate->turn[0], "HAND", -1, $restriction);
         else $playable = false;
         $border = CardBorderColor($myHand[$i], "HAND", $playable);
-        $actionTypeOut = (($currentPlayer == $playerID) && $playable == 1 ? $actionType : 0);
+        $actionTypeOut = (($gamestate->currentPlayer == $playerID) && $playable == 1 ? $actionType : 0);
         if ($restriction != "") $restriction = implode("_", explode(" ", $restriction));
         $actionDataOverride = (($actionType == 16 || $actionType == 27) ? strval($i) : "");
       }
@@ -925,9 +924,6 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
     }
   }
   echo ($handContents);
-  $banishUI = BanishUIMinimal("HAND");
-  if ($handContents != "" && $banishUI != "") echo ("|");
-  echo ($banishUI);
   echo ("</div>"); //End hand div
 
   $myAllies = GetAllies($playerID);
@@ -945,9 +941,9 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
         $actionDataOverride = $inOptions ? $mzIndex : 0;
         $border = CardBorderColor($myAllies[$i], "PLAY", $action == 16);
       } else {
-        $playable = IsPlayable($myAllies[$i], $turn[0], "PLAY", $i, $restriction) && ($myAllies[$i + 1] == 2 || AllyPlayableExhausted($myAllies[$i]));
+        $playable = IsPlayable($myAllies[$i], $gamestate->turn[0], "PLAY", $i, $restriction) && ($myAllies[$i + 1] == 2 || AllyPlayableExhausted($myAllies[$i]));
         $border = CardBorderColor($myAllies[$i], "PLAY", $playable);
-        $action = $currentPlayer == $playerID && $turn[0] != "P" && $playable ? 24 : 0;
+        $action = $gamestate->currentPlayer == $playerID && $gamestate->turn[0] != "P" && $playable ? 24 : 0;
         $actionDataOverride = strval($i);
       }
       
@@ -1017,9 +1013,9 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
       $actionDataOverride = $inOptions ? $mzIndex : 0;
       $border = CardBorderColor($myCharacter[$i], "CHAR", $action == 16);
     } else {
-      $playable = $playerID == $currentPlayer && IsPlayable($myCharacter[$i], $turn[0], "CHAR", $i, $restriction) && ($myCharacter[$i + 1] == 2 || $epicActionUsed == 0);
+      $playable = $playerID == $gamestate->currentPlayer && IsPlayable($myCharacter[$i], $gamestate->turn[0], "CHAR", $i, $restriction) && ($myCharacter[$i + 1] == 2 || $epicActionUsed == 0);
       $border = CardBorderColor($myCharacter[$i], "CHAR", $playable);
-      $action = $currentPlayer == $playerID && $playable ? 3 : 0;
+      $action = $gamestate->currentPlayer == $playerID && $playable ? 3 : 0;
       $actionDataOverride = strval($i);
     }
 
@@ -1061,7 +1057,7 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
   //Display My Deck
   if (count($myDeck) > 0) {
     $playerDeck = new Deck($playerID);
-    if ($turn[0] == "OVER") echo ("<div class= 'my-deck' title='Click to view the cards in your Deck.' style='cursor:pointer;" . GetZoneRight("DECK") . "; bottom:" . GetZoneBottom("MYDECK") . "' onclick='TogglePopup(\"myDeckPopup\");'>");
+    if ($gamestate->turn[0] == "OVER") echo ("<div class= 'my-deck' title='Click to view the cards in your Deck.' style='cursor:pointer;" . GetZoneRight("DECK") . "; bottom:" . GetZoneBottom("MYDECK") . "' onclick='TogglePopup(\"myDeckPopup\");'>");
     else echo ("<div class= 'my-deck'>");
     echo (Card($MyCardBack, "concat", $cardSizeAura, 0, 0, 0, 0, $playerDeck->RemainingCards()));
   } else {
@@ -1095,12 +1091,12 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
   echo ("<div style='flex-grow:0; flex-shrink:0; text-align:left; margin-top: -32px; width:100%; font-weight:bold; font-size:20px; text-transform: uppercase; font-weight: 600; color: white; user-select: none;'>Round " . $currentRound . "</div>");
   echo ("<div style='flex-grow:0; flex-shrink:0; text-align:left; width:100%; font-weight:bold; font-size:16px; font-weight: 600; color: white; margin-top: 5px; user-select: none;'>Last Played</div>");
   echo ("<div class='last-played-card' style='flex-grow:0; flex-shrink:0; position:relative; margin:10px 0 14px 0'>");
-  if (count($lastPlayed) == 0) echo Card($MyCardBack, "CardImages", intval($rightSideWidth * 1.3));
+  if (count($gamestate->lastPlayed) == 0) echo Card($MyCardBack, "CardImages", intval($rightSideWidth * 1.3));
   else {
-    echo Card($lastPlayed[0], "CardImages", intval($rightSideWidth * 1.3), controller: $lastPlayed[1]);
-    if (count($lastPlayed) >= 4) {
-      if ($lastPlayed[3] == "FUSED") echo ("<img title='This card was fused.' style='position:absolute; z-index:100; top:125px; left:7px;' src='./Images/fuse2.png' />");
-      //else if($lastPlayed[3] == "UNFUSED") echo("<img title='This card was not fused.' style='position:absolute; z-index:100; top:125px; left:7px;' src='./Images/Unfused.png' />");
+    echo Card($gamestate->lastPlayed[0], "CardImages", intval($rightSideWidth * 1.3), controller: $gamestate->lastPlayed[1]);
+    if (count($gamestate->lastPlayed) >= 4) {
+      if ($gamestate->lastPlayed[3] == "FUSED") echo ("<img title='This card was fused.' style='position:absolute; z-index:100; top:125px; left:7px;' src='./Images/fuse2.png' />");
+      //else if($gamestate->lastPlayed[3] == "UNFUSED") echo("<img title='This card was not fused.' style='position:absolute; z-index:100; top:125px; left:7px;' src='./Images/Unfused.png' />");
     }
   }
   echo ("</div>");
@@ -1113,8 +1109,8 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
     echo ("</div>");
   }
 
-  echo ("<div style='display:none;' id='lastCurrentPlayer'>" . $currentPlayer . "</div>");
-  echo ("<div style='display:none;' id='passConfirm'>" . ($turn[0] == "ARS" && count($myHand) > 0 ? "true" : "false") . "</div>");
+  echo ("<div style='display:none;' id='lastCurrentPlayer'>" . $gamestate->currentPlayer . "</div>");
+  echo ("<div style='display:none;' id='passConfirm'>" . ($gamestate->turn[0] == "ARS" && count($myHand) > 0 ? "true" : "false") . "</div>");
 }
 
 function PlayableCardBorderColor($cardID)
@@ -1227,10 +1223,6 @@ function GetZoneRight($zone)
       return intval($rightSideWidth * 1.05) . "px";
     case "DECK":
       return intval($rightSideWidth * 1.05) . "px";
-    case "BANISH":
-      return intval($rightSideWidth * 1.05) . "px";
-    case "PITCH":
-      return (intval($rightSideWidth * 1.14) + $cardWidth) . "px";
   }
 }
 
@@ -1238,14 +1230,10 @@ function GetZoneBottom($zone)
 {
   global $cardSize;
   switch ($zone) {
-    case "MYBANISH":
-      return ($cardSize * 2 - 25) . "px";
     case "MYDECK":
       return ($cardSize - 10) . "px";
     case "MYDISCARD":
       return (5) . "px";
-    case "MYPITCH":
-      return ($cardSize - 10);
   }
 }
 
@@ -1253,14 +1241,10 @@ function GetZoneTop($zone)
 {
   global $cardSize;
   switch ($zone) {
-    case "THEIRBANISH":
-      return ($cardSize * 2 - 25) . "px";
     case "THEIRDECK":
       return ($cardSize - 10) . "px";
     case "THEIRDISCARD":
       return (5) . "px";
-    case "THEIRPITCH":
-      return ($cardSize - 10);
   }
 }
 
@@ -1276,7 +1260,7 @@ function IsTileable($cardID)
 
 function DisplayTiles($player)
 {
-  global $cardSizeAura, $playerID, $turn;
+  global $cardSizeAura, $playerID, $gamestate;
   $auras = GetAuras($player);
 
   $count = 0;
@@ -1290,7 +1274,7 @@ function DisplayTiles($player)
 
       if($player == $playerID && $first > -1) {
         $actionIndex = $i;
-        $playable = IsPlayable($auras[$i], $turn[0], "PLAY", $i);
+        $playable = IsPlayable($auras[$i], $gamestate->turn[0], "PLAY", $i);
       }
     }
   }
@@ -1305,8 +1289,8 @@ function DisplayTiles($player)
 
 function GetPhaseHelptext()
 {
-  global $turn;
-  $defaultText = "Choose " . TypeToPlay($turn[0]);
+  global $gamestate;
+  $defaultText = "Choose " . TypeToPlay($gamestate->turn[0]);
   return (GetDQHelpText() != "-" ? implode(" ", explode("_", GetDQHelpText())) : $defaultText);
 }
 

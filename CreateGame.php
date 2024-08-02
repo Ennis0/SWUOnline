@@ -4,6 +4,7 @@ ob_start();
 include "HostFiles/Redirector.php";
 include "Libraries/HTTPLibraries.php";
 include "Libraries/SHMOPLibraries.php";
+include_once "Classes/Gamestate.php";
 include_once "Libraries/PlayerSettings.php";
 include_once 'Assets/patreon-php-master/src/PatreonDictionary.php';
 include_once "./AccountFiles/AccountDatabaseAPI.php";
@@ -25,6 +26,8 @@ $gameDescription = htmlentities(TryGet("gameDescription", "Game #"), ENT_QUOTES)
 $deckbuilderID = TryGet("user", "");
 $roguelikeGameID = TryGet("roguelikeGameID", "");
 $startingHealth = TryGet("startingHealth", "");
+
+$gamestate = new Gamestate();
 
 if($favoriteDeckLink != 0)
 {
@@ -101,9 +104,9 @@ if ($deckTestMode != "") {
   $gameStatus = 0; //Initial
 }
 $firstPlayerChooser = "";
-$firstPlayer = 1;
-$p1Key = hash("sha256", rand() . rand());
-$p2Key = hash("sha256", rand() . rand() . rand());
+$gamestate->firstPlayer = 1;
+$gamestate->p1Key = hash("sha256", rand() . rand());
+$gamestate->p2Key = hash("sha256", rand() . rand() . rand());
 $p1uid = "-";
 $p2uid = "-";
 $p1id = "-";

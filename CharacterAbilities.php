@@ -46,7 +46,7 @@ function CharacterStartTurnAbility($player)
 
 function DefCharacterStartTurnAbilities()
 {
-  global $defPlayer, $mainPlayer;
+  global $defPlayer, $gamestate;
   $character = &GetPlayerCharacter($defPlayer);
   for($i = 0; $i < count($character); $i += CharacterPieces()) {
     if($character[$i + 1] == 0 || $character[$i + 1] == 1) continue; //Do not process ability if it is destroyed
@@ -96,9 +96,9 @@ function ResetCharacter($player) {
 
 function CharacterCostModifier($cardID, $from)
 {
-  global $currentPlayer, $CS_NumSwordAttacks;
+  global $gamestate, $CS_NumSwordAttacks;
   $modifier = 0;
-  if(CardSubtype($cardID) == "Sword" && GetClassState($currentPlayer, $CS_NumSwordAttacks) == 1 && SearchCharacterActive($currentPlayer, "CRU077")) {
+  if(CardSubtype($cardID) == "Sword" && GetClassState($gamestate->currentPlayer, $CS_NumSwordAttacks) == 1 && SearchCharacterActive($gamestate->currentPlayer, "CRU077")) {
     --$modifier;
   }
   return $modifier;
@@ -154,9 +154,9 @@ function EquipCard($player, $card)
 
 function EquipPayAdditionalCosts($cardIndex, $from)
 {
-  global $currentPlayer;
+  global $gamestate;
   if($cardIndex == -1) return;//TODO: Add error handling
-  $character = &GetPlayerCharacter($currentPlayer);
+  $character = &GetPlayerCharacter($gamestate->currentPlayer);
   $cardID = $character[$cardIndex];
   switch($cardID) {
     case "1393827469"://Tarkintown

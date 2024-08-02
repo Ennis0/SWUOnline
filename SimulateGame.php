@@ -14,8 +14,6 @@ include "Libraries/StatFunctions.php";
 include "Libraries/UILibraries.php";
 include "Libraries/PlayerSettings.php";
 include "Libraries/NetworkingLibraries.php";
-include "AI/CombatDummy.php";
-include "AI/PlayerMacros.php";
 include "Libraries/HTTPLibraries.php";
 require_once("Libraries/CoreLibraries.php");
 include_once "./includes/dbh.inc.php";
@@ -43,13 +41,13 @@ $playerID = $commands[0][0];
 copy("./Games/" . $gameName . "/startGamestate.txt", "./Games/" . $gameName . "/gamestate.txt");
 
 include "ParseGamestate.php";
-$otherPlayer = $currentPlayer == 1 ? 2 : 1;
+$otherPlayer = $gamestate->currentPlayer == 1 ? 2 : 1;
 $skipWriteGamestate = false;
 $mainPlayerGamestateStillBuilt = 0;
 $makeCheckpoint = 0;
 $makeBlockBackup = 0;
 $MakeStartTurnBackup = false;
-$targetAuth = ($playerID == 1 ? $p1Key : $p2Key);
+$targetAuth = ($playerID == 1 ? $gamestate->p1Key : $gamestate->p2Key);
 $conceded = false;
 $randomSeeded = false;
 $afterResolveEffects = [];
@@ -77,7 +75,7 @@ for($k=0; $k<count($commands); ++$k)
 
   ProcessMacros();
 
-  $defPlayer = $mainPlayer == 1 ? 2 : 1;
+  $defPlayer = $gamestate->mainPlayer == 1 ? 2 : 1;
   DoGamestateUpdate();
 
 

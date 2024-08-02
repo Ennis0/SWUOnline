@@ -11,6 +11,9 @@
     }
   }
 
+  include_once "Classes/Gamestate.php";
+  $gamestate = new Gamestate();
+
   $filename = "./Games/" . $gameName . "/GameFile.txt";
   if(!file_exists($filename)) exit;
   $gameFileHandler = fopen($filename, "r+");
@@ -31,9 +34,9 @@
   $format = trim(fgets($gameFileHandler));
   $visibility = trim(fgets($gameFileHandler));
   $firstPlayerChooser = trim(fgets($gameFileHandler));
-  $firstPlayer = trim(fgets($gameFileHandler));
-  $p1Key = trim(fgets($gameFileHandler));
-  $p2Key = trim(fgets($gameFileHandler));
+  $gamestate->firstPlayer = trim(fgets($gameFileHandler));
+  $gamestate->p1Key = trim(fgets($gameFileHandler));
+  $gamestate->p2Key = trim(fgets($gameFileHandler));
   $p1uid = trim(fgets($gameFileHandler));
   $p2uid = trim(fgets($gameFileHandler));
   $p1id = trim(fgets($gameFileHandler));
@@ -44,8 +47,6 @@
   $p2IsPatron = trim(fgets($gameFileHandler));
   $p1DeckLink = trim(fgets($gameFileHandler));
   $p2DeckLink = trim(fgets($gameFileHandler));
-  $p1IsChallengeActive = trim(fgets($gameFileHandler));
-  $p2IsChallengeActive = trim(fgets($gameFileHandler));
   $joinerIP = trim(fgets($gameFileHandler));
   $deprecated = trim(fgets($gameFileHandler));//Deprecated
   $p1Matchups = json_decode(trim(fgets($gameFileHandler)));

@@ -9,7 +9,6 @@ include "../GameTerms.php";
 include "../Libraries/StatFunctions.php";
 include "../Libraries/PlayerSettings.php";
 include "../Libraries/UILibraries2.php";
-include "../AI/CombatDummy.php";
 include_once "../includes/dbh.inc.php";
 include_once "../includes/functions.inc.php";
 include_once "../MenuFiles/StartHelper.php";
@@ -42,7 +41,7 @@ $submissionString = $_POST["submission"];
 include "./APIParseGamefile.php";
 include "../MenuFiles/WriteGamefile.php";
 
-$targetAuth = ($playerID == 1 ? $p1Key : $p2Key);
+$targetAuth = ($playerID == 1 ? $gamestate->p1Key : $gamestate->p2Key);
 if ($authKey != $targetAuth) {
   $response->error = "Invalid Auth Key";
   echo json_encode($response);
@@ -115,7 +114,7 @@ if($p1SideboardSubmitted == "1" && $p2SideboardSubmitted == "1") {
 
   fwrite($handler, "\r\n"); //Landmarks
   fwrite($handler, "0\r\n"); //Game winner (0=none, else player ID)
-  fwrite($handler, "$firstPlayer\r\n"); //First Player
+  fwrite($handler, "$gamestate->firstPlayer\r\n"); //First Player
   fwrite($handler, "1\r\n"); //Current Player
   fwrite($handler, "1\r\n"); //Current Turn
   fwrite($handler, "M 1\r\n"); //What phase/player is active
@@ -134,8 +133,8 @@ if($p1SideboardSubmitted == "1" && $p2SideboardSubmitted == "1") {
   fwrite($handler, "\r\n"); //Last Played Card
   fwrite($handler, "0\r\n"); //Number of prior chain links this turn
   fwrite($handler, "\r\n"); //Chain Link Summaries
-  fwrite($handler, $p1Key . "\r\n"); //Player 1 auth key
-  fwrite($handler, $p2Key . "\r\n"); //Player 2 auth key
+  fwrite($handler, $gamestate->p1Key . "\r\n"); //Player 1 auth key
+  fwrite($handler, $gamestate->p2Key . "\r\n"); //Player 2 auth key
   fwrite($handler, 0 . "\r\n"); //Permanent unique ID counter
   fwrite($handler, "0\r\n"); //Game status -- 0 = START, 1 = PLAY, 2 = OVER
   fwrite($handler, "\r\n"); //Animations
@@ -170,7 +169,7 @@ if($p1SideboardSubmitted == "1" && $p2SideboardSubmitted == "1") {
   $p2Hero = GetCachePiece($gameName, 8);
   $visibility = GetCachePiece($gameName, 9);
   $format = GetCachePiece($gameName, 13);
-  $currentPlayer = 0;
+  $gamestate->currentPlayer = 0;
   $isReplay = 0;
   WriteCache($gameName, ($currentUpdate + 1) . "!" . $currentTime . "!" . $currentTime . "!-1!-1!" . $currentTime . "!"  . $p1Hero . "!" . $p2Hero . "!" . $visibility . "!" . $isReplay . "!0!0!" . $format . "!" . $MGS_GameStarted . "!0!0"); //Initialize SHMOP cache for this game
 

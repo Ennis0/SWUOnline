@@ -64,7 +64,7 @@ while ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
 include "MenuFiles/ParseGamefile.php";
 include "MenuFiles/WriteGamefile.php";
 
-$targetAuth = ($playerID == 1 ? $p1Key : $p2Key);
+$targetAuth = ($playerID == 1 ? $gamestate->p1Key : $gamestate->p2Key);
 if ($authKey != $targetAuth) {
   echo ("Invalid Auth Key");
   exit;

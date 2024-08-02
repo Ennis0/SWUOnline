@@ -8,9 +8,9 @@
     function WriteGameFile()
     {
       global $gameFileHandler;
-      global $p1Data, $p2Data, $gameStatus, $format, $visibility, $firstPlayerChooser, $firstPlayer, $p1Key, $p2Key, $p1uid, $p2uid, $p1id, $p2id;
+      global $gamestate, $p1Data, $p2Data, $gameStatus, $format, $visibility, $firstPlayerChooser, $p1uid, $p2uid, $p1id, $p2id;
       global $gameDescription, $hostIP, $p1IsPatron, $p2IsPatron, $p1DeckLink, $p2DeckLink;
-      global $p1IsChallengeActive, $p2IsChallengeActive, $joinerIP, $p1deckbuilderID, $p2deckbuilderID, $roguelikeGameID;
+      global $joinerIP, $p1deckbuilderID, $p2deckbuilderID, $roguelikeGameID;
       global $p1Matchups, $p2Matchups, $p1StartingHealth, $p1ContentCreatorID, $p2ContentCreatorID;
       global $p1SideboardSubmitted, $p2SideboardSubmitted;
       rewind($gameFileHandler);
@@ -20,9 +20,9 @@
       fwrite($gameFileHandler, $format . "\r\n");
       fwrite($gameFileHandler, $visibility . "\r\n");
       fwrite($gameFileHandler, $firstPlayerChooser . "\r\n");
-      fwrite($gameFileHandler, $firstPlayer . "\r\n");
-      fwrite($gameFileHandler, $p1Key . "\r\n");
-      fwrite($gameFileHandler, $p2Key . "\r\n");
+      fwrite($gameFileHandler, $gamestate->firstPlayer . "\r\n");
+      fwrite($gameFileHandler, $gamestate->p1Key . "\r\n");
+      fwrite($gameFileHandler, $gamestate->p2Key . "\r\n");
       fwrite($gameFileHandler, $p1uid . "\r\n");
       fwrite($gameFileHandler, $p2uid . "\r\n");
       fwrite($gameFileHandler, $p1id . "\r\n");
@@ -33,8 +33,6 @@
       fwrite($gameFileHandler, $p2IsPatron . "\r\n");
       fwrite($gameFileHandler, $p1DeckLink . "\r\n");
       fwrite($gameFileHandler, $p2DeckLink . "\r\n");
-      fwrite($gameFileHandler, $p1IsChallengeActive . "\r\n");
-      fwrite($gameFileHandler, $p2IsChallengeActive . "\r\n");
       fwrite($gameFileHandler, $joinerIP . "\r\n");
       fwrite($gameFileHandler, "\r\n");//Deprecated
       fwrite($gameFileHandler, json_encode($p1Matchups) . "\r\n");

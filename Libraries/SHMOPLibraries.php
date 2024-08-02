@@ -148,7 +148,7 @@ function IncrementCachePiece($gameName, $piece)
 
 function GamestateUpdated($gameName)
 {
-  global $currentPlayer;
+  global $gamestate;
   $cache = ReadCache($gameName);
   $cacheArr = explode(SHMOPDelimiter(), $cache);
   $cacheArr[0]++;

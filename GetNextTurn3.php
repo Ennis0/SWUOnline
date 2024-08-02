@@ -80,8 +80,8 @@ while ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
       $opponentDisconnected = true;
     }
     //Handle server timeout
-    $lastUpdateTime = GetCachePiece($gameName, 6);
-    if ($currentTime - $lastUpdateTime > 90000 && GetCachePiece($gameName, 12) != "1") //90 seconds
+    $gamestate->lastUpdateTime = GetCachePiece($gameName, 6);
+    if ($currentTime - $gamestate->lastUpdateTime > 90000 && GetCachePiece($gameName, 12) != "1") //90 seconds
     {
       SetCachePiece($gameName, 12, "1");
       $opponentInactive = true;
@@ -113,8 +113,8 @@ if($lastUpdate == 0)
       $opponentDisconnected = true;
     }
     //Handle server timeout
-    $lastUpdateTime = GetCachePiece($gameName, 6);
-    if ($currentTime - $lastUpdateTime > 90000 && GetCachePiece($gameName, 12) != "1") //90 seconds
+    $gamestate->lastUpdateTime = GetCachePiece($gameName, 6);
+    if ($currentTime - $gamestate->lastUpdateTime > 90000 && GetCachePiece($gameName, 12) != "1") //90 seconds
     {
       SetCachePiece($gameName, 12, "1");
       $opponentInactive = true;
@@ -143,25 +143,24 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
     PlayerLoseHealth($otherP, GetHealth($otherP));
     include "WriteGamestate.php";
   } else if ($opponentInactive && !IsGameOver()) {
-    $currentPlayerActivity = 2;
+    $gamestate->currentPlayerActivity = 2;
     WriteLog("The current player is inactive.");
     include "WriteGamestate.php";
     GamestateUpdated($gameName);
   }
 
-  if ($turn[0] == "REMATCH") {
+  if ($gamestate->turn[0] == "REMATCH") {
     include "MenuFiles/ParseGamefile.php";
     include "MenuFiles/WriteGamefile.php";
     if ($gameStatus == $MGS_GameStarted) {
-      include "AI/CombatDummy.php";
       $origDeck = "./Games/" . $gameName . "/p1DeckOrig.txt";
       if (file_exists($origDeck)) copy($origDeck, "./Games/" . $gameName . "/p1Deck.txt");
       $origDeck = "./Games/" . $gameName . "/p2DeckOrig.txt";
       if (file_exists($origDeck)) copy($origDeck, "./Games/" . $gameName . "/p2Deck.txt");
       $gameStatus = (IsPlayerAI(2) ? $MGS_ReadyToStart : $MGS_ChooseFirstPlayer);
       SetCachePiece($gameName, 14, $gameStatus);
-      $firstPlayer = 1;
-      $firstPlayerChooser = ($winner == 1 ? 2 : 1);
+      $gamestate->firstPlayer = 1;
+      $firstPlayerChooser = ($gamestate->winner == 1 ? 2 : 1);
       unlink("./Games/" . $gameName . "/gamestate.txt");
 
       $errorFileName = "./BugReports/CreateGameFailsafe.txt";
@@ -185,14 +184,14 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
 
   $response->lastUpdate = $cacheVal;
 
-  $targetAuth = ($playerID == 1 ? $p1Key : $p2Key);
+  $targetAuth = ($playerID == 1 ? $gamestate->p1Key : $gamestate->p2Key);
   if ($playerID != 3 && $authKey != $targetAuth) {
     $response->errorMessage = "Invalid Authkey";
     echo (json_encode($response));
     exit;
   }
 
-  if (count($turn) == 0) {
+  if (count($gamestate->turn) == 0) {
     RevertGamestate();
     GamestateUpdated($gameName);
     exit();
@@ -230,29 +229,29 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
     
     $ongoingAttack->attackingCard = JSONRenderedCard(
       cardNumber: AttackerCardID(),
-      controller: $mainPlayer,
+      controller: $gamestate->mainPlayer,
       actionDataOverride: '0',
       borderColor: $borderColor,
     );
   }
-  $ongoingAttack->attackTarget = CardName(GetMZCard($mainPlayer, GetAttackTarget()));
+  $ongoingAttack->attackTarget = CardName(GetMZCard($gamestate->mainPlayer, GetAttackTarget()));
   $ongoingAttack->damagePrevention = GetDamagePrevention($defPlayer);
 
   //Display layer
   $layerObject = new stdClass;
   $layerContents = array();
-  for ($i = count($layers) - LayerPieces(); $i >= 0; $i -= LayerPieces()) {
-    $layerName = ($layers[$i] == "LAYER" || IsAbilityLayer($layers[$i]) ? $layers[$i + 2] : $layers[$i]);
-    $layerContents[] = JSONRenderedCard(cardNumber: $layerName, controller: $layers[$i+1]);
+  for ($i = count($gamestate->layers) - LayerPieces(); $i >= 0; $i -= LayerPieces()) {
+    $layerName = ($gamestate->layers[$i] == "LAYER" || IsAbilityLayer($gamestate->layers[$i]) ? $gamestate->layers[$i + 2] : $gamestate->layers[$i]);
+    $layerContents[] = JSONRenderedCard(cardNumber: $layerName, controller: $gamestate->layers[$i+1]);
   }
   $reorderableLayers = array();
   $numReorderable = 0;
-  for ($i = count($layers) - LayerPieces(); $i >= 0; $i -= LayerPieces()) {
+  for ($i = count($gamestate->layers) - LayerPieces(); $i >= 0; $i -= LayerPieces()) {
     $layer = new stdClass();
-    $layerName = ($layers[$i] == "LAYER" || IsAbilityLayer($layers[$i]) ? $layers[$i + 2] : $layers[$i]);
-    $layer->card = JSONRenderedCard(cardNumber: $layerName, controller: $layers[$i + 1]);
+    $layerName = ($gamestate->layers[$i] == "LAYER" || IsAbilityLayer($gamestate->layers[$i]) ? $gamestate->layers[$i + 2] : $gamestate->layers[$i]);
+    $layer->card = JSONRenderedCard(cardNumber: $layerName, controller: $gamestate->layers[$i + 1]);
     $layer->layerID = $i;
-    $layer->isReorderable = $playerID == $mainPlayer && $i <= $dqState[8] && ($i > 0 || $numReorderable > 0);
+    $layer->isReorderable = $playerID == $gamestate->mainPlayer && $i <= $gamestate->dqState[8] && ($i > 0 || $numReorderable > 0);
     if($layer->isReorderable) ++$numReorderable;
     $reorderableLayers[] = $layer;
   }
@@ -274,36 +273,21 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
   //Their soul count
   $response->opponentSoulCount = count($theirSoul);
 
-  //Display their discard, pitch, deck, and banish
+  //Display their discard and deck
   $opponentDiscardArray = array();
   for ($i = 0; $i < count($theirDiscard); $i += DiscardPieces()) {
     $opponentDiscardArray[] = JSONRenderedCard($theirDiscard[$i]);
   }
   $response->opponentDiscard = $opponentDiscardArray;
 
-  $response->opponentPitchCount = $theirResources[0];
-  $opponentPitchArr = array();
-  for ($i = count($theirPitch) - PitchPieces(); $i >= 0; $i -= PitchPieces()) {
-    $opponentPitchArr[] = JSONRenderedCard($theirPitch[$i]);
-  }
-  $response->opponentPitch = $opponentPitchArr;
-
   $response->opponentDeckCount = count($theirDeck);
   $response->opponentDeckCard = JSONRenderedCard(count($theirDeck) > 0 ? $TheirCardBack : $blankZone);
-
-  $opponentBanishArr = array();
-  for ($i = 0; $i < count($theirBanish); $i += BanishPieces()) {
-    $cardID = $theirBanish[$i];
-    if ($theirBanish[$i + 1] == "INT" || $theirBanish[$i + 1] == "UZURI") $cardID = "CardBack";
-    $opponentBanishArr[] = JSONRenderedCard($cardID);
-  }
-  $response->opponentBanish = $opponentBanishArr;
 
   //Now display their character and equipment
   $numWeapons = 0;
   $characterContents = array();
   for ($i = 0; $i < count($theirCharacter); $i += CharacterPieces()) {
-    if ($i > 0 && $inGameStatus == "0") continue;
+    if ($i > 0 && $gamestate->inGameStatus == "0") continue;
     $atkCounters = 0;
     $counters = 0;
     $type = CardType($theirCharacter[$i]); //NOTE: This is not reliable type
@@ -324,30 +308,23 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
 
   // my hand contents
   $restriction = "";
-  $actionType = $turn[0] == "ARS" ? 4 : 27;
-  if (str_contains($turn[0], "CHOOSEHAND") && ($turn[0] != "MULTICHOOSEHAND" || $turn[0] != "MAYMULTICHOOSEHAND")) $actionType = 16;
+  $actionType = $gamestate->turn[0] == "ARS" ? 4 : 27;
+  if (str_contains($gamestate->turn[0], "CHOOSEHAND") && ($gamestate->turn[0] != "MULTICHOOSEHAND" || $gamestate->turn[0] != "MAYMULTICHOOSEHAND")) $actionType = 16;
   $myHandContents = array();
   for ($i = 0; $i < count($myHand); ++$i) {
     if ($playerID == 3) {
       $myHandContents[] = JSONRenderedCard(cardNumber: $MyCardBack, controller: 2);
     } else {
-      if ($playerID == $currentPlayer) $playable = $turn[0] == "ARS" || IsPlayable($myHand[$i], $turn[0], "HAND", -1, $restriction) || ($actionType == 16 && str_contains("," . $turn[2] . ",", "," . $i . ","));
+      if ($playerID == $gamestate->currentPlayer) $playable = $gamestate->turn[0] == "ARS" || IsPlayable($myHand[$i], $gamestate->turn[0], "HAND", -1, $restriction) || ($actionType == 16 && str_contains("," . $gamestate->turn[2] . ",", "," . $i . ","));
       else $playable = false;
       $border = CardBorderColor($myHand[$i], "HAND", $playable);
-      $actionTypeOut = (($currentPlayer == $playerID) && $playable == 1 ? $actionType : 0);
+      $actionTypeOut = (($gamestate->currentPlayer == $playerID) && $playable == 1 ? $actionType : 0);
       if ($restriction != "") $restriction = implode("_", explode(" ", $restriction));
       $actionDataOverride = (($actionType == 16 || $actionType == 27) ? strval($i) : $myHand[$i]);
       $myHandContents[] = JSONRenderedCard(cardNumber: $myHand[$i], action: $actionTypeOut, borderColor: $border, actionDataOverride: $actionDataOverride, controller: $playerID, restriction: $restriction);
     }
   }
   $response->playerHand = $myHandContents;
-
-  // if ($playerID != 3)
-  // {
-  //   $banishUI = BanishUIMinimal("HAND");
-  //   echo($banishUI);
-  // }
-  // echo ("<br>"); //End hand div
 
   //My Health
   $response->playerHealth = $myDamage;
@@ -360,25 +337,8 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
   }
   $response->playerDiscard = $playerDiscardArr;
 
-  $response->playerPitchCount = $myResources[0];
-  $playerPitchArr = array();
-  for ($i = count($myPitch) - PitchPieces(); $i >= 0; $i -= PitchPieces()) {
-    $playerPitchArr[] = JSONRenderedCard($myPitch[$i]);
-  }
-  $response->playerPitch = $playerPitchArr;
-
   $response->playerDeckCount = count($myDeck);
   $response->playerDeckCard = JSONRenderedCard(count($myDeck) > 0 ? $MyCardBack : $blankZone);
-
-  $banish = GetBanish($playerID);
-  $playerBanishArr = array();
-  for ($i = 0; $i < count($banish); $i += BanishPieces()) {
-    $action = $currentPlayer == $playerID && IsPlayable($banish[$i], $turn[0], "BANISH", $i) ? 14 : 0;
-    $mod = explode("-", $banish[$i + 1])[0];
-    $border = CardBorderColor($banish[$i], "BANISH", $action > 0, $mod);
-    $playerBanishArr[] = JSONRenderedCard($banish[$i], action: $action, borderColor: $border, actionDataOverride: strval($i));
-  }
-  $response->playerBanish = $playerBanishArr;
 
   //Now display my character and equipment
   $numWeapons = 0;
@@ -389,7 +349,7 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
     $atkCounters = 0;
     if (CardType($myCharacter[$i]) == "W") $atkCounters = $myCharacter[$i + 3];
     if ($myCharacter[$i + 2] > 0) $counters = $myCharacter[$i + 2];
-    $playable = $playerID == $currentPlayer && $myCharacter[$i + 1] == 2 && IsPlayable($myCharacter[$i], $turn[0], "CHAR", $i, $restriction);
+    $playable = $playerID == $gamestate->currentPlayer && $myCharacter[$i + 1] == 2 && IsPlayable($myCharacter[$i], $gamestate->turn[0], "CHAR", $i, $restriction);
     $border = CardBorderColor($myCharacter[$i], "CHAR", $playable);
     $type = CardType($myCharacter[$i]);
     $sType = CardSubType($myCharacter[$i]);
@@ -405,7 +365,7 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
       $gem = ($myCharacter[$i + 9] == 1 ? 1 : 2);
     }
     $restriction = implode("_", explode(" ", $restriction));
-    $myCharData[] = JSONRenderedCard($myCharacter[$i], $currentPlayer == $playerID && $playable ? 3 : 0, $myCharacter[$i+1] != 2 ? 1 : 0, $border, $myCharacter[$i+1] != 0 ? $counters : 0, strval($i), 0, $myCharacter[$i+4], $atkCounters, $playerID, $type, $sType, $restriction, $myCharacter[$i+1] == 0, $myCharacter[$i+6] == 1, $myCharacter[$i+8] == 1, $gem, numUses: $myCharacter[$i+5]);
+    $myCharData[] = JSONRenderedCard($myCharacter[$i], $gamestate->currentPlayer == $playerID && $playable ? 3 : 0, $myCharacter[$i+1] != 2 ? 1 : 0, $border, $myCharacter[$i+1] != 0 ? $counters : 0, strval($i), 0, $myCharacter[$i+4], $atkCounters, $playerID, $type, $sType, $restriction, $myCharacter[$i+1] == 0, $myCharacter[$i+6] == 1, $myCharacter[$i+8] == 1, $gem, numUses: $myCharacter[$i+5]);
   }
   $response->playerEquipment = $myCharData;
 
@@ -442,11 +402,11 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
           countersMap: (object)["counters" => $myArsenal[$i+3]]
         );
       } else {
-        if ($playerID == $currentPlayer) $playable = $turn[0] == "ARS" || IsPlayable($myArsenal[$i], $turn[0], "ARS", $i, $restriction) || ($actionType == 16 && str_contains("," . $turn[2] . ",", "," . $i . ","));
+        if ($playerID == $gamestate->currentPlayer) $playable = $gamestate->turn[0] == "ARS" || IsPlayable($myArsenal[$i], $gamestate->turn[0], "ARS", $i, $restriction) || ($actionType == 16 && str_contains("," . $gamestate->turn[2] . ",", "," . $i . ","));
         else $playable = false;
         $border =
           CardBorderColor($myArsenal[$i], "ARS", $playable);
-        $actionTypeOut = (($currentPlayer == $playerID) && $playable == 1 ? 5 : 0);
+        $actionTypeOut = (($gamestate->currentPlayer == $playerID) && $playable == 1 ? 5 : 0);
         if ($restriction != "") $restriction = implode("_", explode(" ", $restriction));
         $actionDataOverride = (($actionType == 16 || $actionType == 27) ? strval($i) : "");
         $myArse[] = JSONRenderedCard(
@@ -508,8 +468,8 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
   for ($i = 0; $i + AllyPieces() - 1 < count($myAllies); $i += AllyPieces()) {
     $type = CardType($myAllies[$i]);
     $sType = CardSubType($myAllies[$i]);
-    $playable = IsPlayable($myAllies[$i], $turn[0], "PLAY", $i, $restriction) && $myAllies[$i + 1] == 2;
-    $actionType = ($currentPlayer == $playerID && $turn[0] != "P" && $playable) ? 24 : 0;
+    $playable = IsPlayable($myAllies[$i], $gamestate->turn[0], "PLAY", $i, $restriction) && $myAllies[$i + 1] == 2;
+    $actionType = ($gamestate->currentPlayer == $playerID && $gamestate->turn[0] != "P" && $playable) ? 24 : 0;
     $border = CardBorderColor($myAllies[$i], "PLAY", $playable);
     $actionDataOverride = ($actionType == 24 ? strval($i) : "");
     $myAlliesOutput[] = JSONRenderedCard(
@@ -532,11 +492,11 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
   $auraTileMap = [];
   $myAurasOutput = array();
   for ($i = 0; $i + AuraPieces() - 1 < count($myAuras); $i += AuraPieces()) {
-    $playable = ($currentPlayer == $playerID && $myAuras[$i+1] == 2 && IsPlayable($myAuras[$i], $turn[0], "PLAY", $i, $restriction));
+    $playable = ($gamestate->currentPlayer == $playerID && $myAuras[$i+1] == 2 && IsPlayable($myAuras[$i], $gamestate->turn[0], "PLAY", $i, $restriction));
     $border = CardBorderColor($myAuras[$i], "PLAY", $playable);
     $counters = $myAuras[$i + 2];
     $atkCounters = $myAuras[$i + 3];
-    $action = $currentPlayer == $playerID && $turn[0] != "P" && $playable ? 22 : 0;
+    $action = $gamestate->currentPlayer == $playerID && $gamestate->turn[0] != "P" && $playable ? 22 : 0;
     $type = CardType($myAuras[$i]);
     $sType = CardSubType($myAuras[$i]);
     $gem = $myAuras[$i + 7];
@@ -564,9 +524,9 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
   for ($i = 0; $i + ItemPieces() - 1 < count($myItems); $i += ItemPieces()) {
     $type = CardType($myItems[$i]);
     $sType = CardSubType($myItems[$i]);
-    $playable = ($currentPlayer == $playerID && IsPlayable($myItems[$i], $turn[0], "PLAY", $i, $restriction));
+    $playable = ($gamestate->currentPlayer == $playerID && IsPlayable($myItems[$i], $gamestate->turn[0], "PLAY", $i, $restriction));
     $border = CardBorderColor($myItems[$i], "PLAY", $playable);
-    $actionTypeOut = (($currentPlayer == $playerID) && $playable == 1 ? 10 : 0);
+    $actionTypeOut = (($gamestate->currentPlayer == $playerID) && $playable == 1 ? 10 : 0);
     if ($restriction != "") $restriction = implode("_", explode(" ", $restriction));
     $actionDataOverride = strval($i);
     $gem = $myItems[$i + 5];
@@ -601,11 +561,11 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
   // Deduplicate current turn effects
   $playerEffects = array();
   $opponentEffects = array();
-  for ($i = 0; $i + CurrentTurnPieces() - 1 < count($currentTurnEffects); $i += CurrentTurnPieces()) {
-    $cardID = explode("-", $currentTurnEffects[$i])[0];
+  for ($i = 0; $i + CurrentTurnPieces() - 1 < count($gamestate->currentTurnEffects); $i += CurrentTurnPieces()) {
+    $cardID = explode("-", $gamestate->currentTurnEffects[$i])[0];
     $cardID = explode(",", $cardID)[0];
     $cardID = explode("_", $cardID)[0];
-    if ($playerID == $currentTurnEffects[$i + 1] || $playerID == 3 && $otherPlayer != $currentTurnEffects[$i + 1]) $playerEffects[] = JSONRenderedCard($cardID);
+    if ($playerID == $gamestate->currentTurnEffects[$i + 1] || $playerID == 3 && $otherPlayer != $gamestate->currentTurnEffects[$i + 1]) $playerEffects[] = JSONRenderedCard($cardID);
     else $opponentEffects[] = JSONRenderedCard($cardID);
   }
   $response->opponentEffects = $opponentEffects;
@@ -614,29 +574,29 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
   //Events
   $newEvents = new stdClass();
   $newEvents->eventArray = array();
-  for ($i = 0; $i < count($events); $i += EventPieces()) {
+  for ($i = 0; $i < count($gamestate->events); $i += EventPieces()) {
     $thisEvent = new stdClass();
-    $thisEvent->eventType = $events[$i];
-    $thisEvent->eventValue = $events[$i + 1];
+    $thisEvent->eventType = $gamestate->events[$i];
+    $thisEvent->eventValue = $gamestate->events[$i + 1];
     $newEvents->eventArray[] = $thisEvent;
   }
   $response->newEvents = $newEvents;
 
   // Phase of the turn (for the tracker widget)
   $turnPhase = new stdClass();
-  $turnPhase->turnPhase = $turn[0];
-  if (count($layers) > 0) {
-    $turnPhase->layer = $layers[0];
+  $turnPhase->turnPhase = $gamestate->turn[0];
+  if (count($gamestate->layers) > 0) {
+    $turnPhase->layer = $gamestate->layers[0];
   }
-  $isItMeOrThem = $currentPlayer == $playerID ? "Choose " : "Your opponent choosing ";
-  $turnPhase->caption = $isItMeOrThem . TypeToPlay($turn[0]);
+  $isItMeOrThem = $gamestate->currentPlayer == $playerID ? "Choose " : "Your opponent choosing ";
+  $turnPhase->caption = $isItMeOrThem . TypeToPlay($gamestate->turn[0]);
   $response->turnPhase = $turnPhase;
 
   // Do we have priority?
-  $response->havePriority = $currentPlayer == $playerID;
+  $response->havePriority = $gamestate->currentPlayer == $playerID;
 
   // opponent and player Action Points
-  if ($mainPlayer == $playerID || ($playerID == 3 && $mainPlayer != $otherPlayer)) {
+  if ($gamestate->mainPlayer == $playerID || ($playerID == 3 && $gamestate->mainPlayer != $otherPlayer)) {
     $response->opponentAP = 0;
     $response->playerAP = $actionPoints;
   } else {
@@ -645,12 +605,12 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
   }
 
   // Last played Card
-  $response->lastPlayedCard = (count($lastPlayed) == 0) ?
+  $response->lastPlayedCard = (count($gamestate->lastPlayed) == 0) ?
     JSONRenderedCard($MyCardBack) :
-    JSONRenderedCard($lastPlayed[0], controller: $lastPlayed[1]);
+    JSONRenderedCard($gamestate->lastPlayed[0], controller: $gamestate->lastPlayed[1]);
 
   // is the player the active player (is it their turn?)
-  $response->amIActivePlayer = $turn[1] == $playerID;
+  $response->amIActivePlayer = $gamestate->turn[1] == $playerID;
 
   //Turn number
   $response->turnNo = $currentRound;
@@ -659,16 +619,16 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
   $promptButtons = array();
   $helpText = "";
   // Reminder text box highlight thing
-  if ($turn[0] != "OVER") {
-    $helpText .= ($currentPlayer != $playerID ? "Waiting for other player to choose " . TypeToPlay($turn[0]) : GetPhaseHelptext());
+  if ($gamestate->turn[0] != "OVER") {
+    $helpText .= ($gamestate->currentPlayer != $playerID ? "Waiting for other player to choose " . TypeToPlay($gamestate->turn[0]) : GetPhaseHelptext());
 
-    if ($currentPlayer == $playerID) {
-      if ($turn[0] == "P" || $turn[0] == "CHOOSEHANDCANCEL" || $turn[0] == "CHOOSEDISCARDCANCEL") {
-        $helpText .=  (" ( " . ($turn[0] == "P" ? $myResources[0] . " of " . $myResources[1] . " " : "") . ")");
+    if ($gamestate->currentPlayer == $playerID) {
+      if ($gamestate->turn[0] == "P" || $gamestate->turn[0] == "CHOOSEHANDCANCEL" || $gamestate->turn[0] == "CHOOSEDISCARDCANCEL") {
+        $helpText .=  (" ( " . ($gamestate->turn[0] == "P" ? $myResources[0] . " of " . $myResources[1] . " " : "") . ")");
         $promptButtons[] = CreateButtonAPI($playerID, "Cancel", 10000, 0, "16px");
       }
-      if (CanPassPhase($turn[0])) {
-        if ($turn[0] == "B") {
+      if (CanPassPhase($gamestate->turn[0])) {
+        if ($gamestate->turn[0] == "B") {
           $promptButtons[] = CreateButtonAPI($playerID, "Undo Block", 10001, 0, "16px");
           $promptButtons[] = CreateButtonAPI($playerID, "Pass", 99, 0, "16px");
           $promptButtons[] = CreateButtonAPI($playerID, "Pass Block and Reactions", 101, 0, "16px", "", "Reactions will not be skipped if the opponent reacts");
@@ -676,7 +636,7 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
       }
     } else {
       if (
-        $currentPlayerActivity == 2 && $playerID != 3
+        $gamestate->currentPlayerActivity == 2 && $playerID != 3
       ) {
         $helpText .= "— Opponent is inactive ";
         $promptButtons[] = CreateButtonAPI($playerID, "Claim Victory", 100007, 0, "16px");
@@ -687,7 +647,7 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
   $playerPrompt->buttons = $promptButtons;
   $response->playerPrompt = $playerPrompt;
 
-  $response->fullRematchAccepted = $turn[0] == "REMATCH";
+  $response->fullRematchAccepted = $gamestate->turn[0] == "REMATCH";
 
   // ******************************
   // * PLAYER MUST CHOOSE A THING *
@@ -698,12 +658,12 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
   $playerInputPopup->active = false;
 
   // Do arcane separately
-  if (($turn[0] == "BUTTONINPUT" || $turn[0] == "BUTTONINPUTNOPASS" || $turn[0] == "CHOOSEARCANE") && $turn[1] == $playerID) {
+  if (($gamestate->turn[0] == "BUTTONINPUT" || $gamestate->turn[0] == "BUTTONINPUTNOPASS" || $gamestate->turn[0] == "CHOOSEARCANE") && $gamestate->turn[1] == $playerID) {
     $playerInputPopup->active = true;
-    $options = explode(",", $turn[2]);
+    $options = explode(",", $gamestate->turn[2]);
     $caption = "";
-    if ($turn[0] == "CHOOSEARCANE") {
-      $vars = explode("-", $dqVars[0]);
+    if ($gamestate->turn[0] == "CHOOSEARCANE") {
+      $vars = explode("-", $gamestate->dqVars[0]);
       $caption .= "Source: " . CardLink($vars[1], $vars[1]) . " Total Damage: " . $vars[0];
     }
     for ($i = 0; $i < count($options); ++$i) {
@@ -712,68 +672,68 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
     $playerInputPopup->popup = CreatePopupAPI("BUTTONINPUT", [], 0, 1, $caption . GetPhaseHelptext(), 1, "");
   }
 
-  if ($turn[0] == "YESNO" && $turn[1] == $playerID) {
+  if ($gamestate->turn[0] == "YESNO" && $gamestate->turn[1] == $playerID) {
     $playerInputPopup->active = true;
     $playerInputButtons[] = CreateButtonAPI($playerID, "Yes", 20, "YES", "20px");
     $playerInputButtons[] = CreateButtonAPI($playerID, "No", 20, "NO", "20px");
     if (GetDQHelpText() != "-") $caption = implode(" ", explode("_", GetDQHelpText()));
-    else $caption = "Choose " . TypeToPlay($turn[0]);
+    else $caption = "Choose " . TypeToPlay($gamestate->turn[0]);
     $playerInputPopup->popup = CreatePopupAPI("YESNO", [], 0, 1, $caption, 1, "");
   }
 
-  if ($turn[0] == "DYNPITCH" && $turn[1] == $playerID) {
+  if ($gamestate->turn[0] == "DYNPITCH" && $gamestate->turn[1] == $playerID) {
     $playerInputPopup->active = true;
-    $options = explode(",", $turn[2]);
+    $options = explode(",", $gamestate->turn[2]);
     for ($i = 0; $i < count($options); ++$i) {
       $playerInputButtons[] = CreateButtonAPI($playerID, $options[$i], 7, $options[$i], "24px");
     }
-    $playerInputPopup->popup = CreatePopupAPI("DYNPITCH", [], 0, 1, "Choose " . TypeToPlay($turn[0]), 1, "");
+    $playerInputPopup->popup = CreatePopupAPI("DYNPITCH", [], 0, 1, "Choose " . TypeToPlay($gamestate->turn[0]), 1, "");
   }
 
-  if ($turn[0] == "OK" && $turn[1] == $playerID) {
+  if ($gamestate->turn[0] == "OK" && $gamestate->turn[1] == $playerID) {
     $playerInputPopup->active = true;
     $playerInputButtons[] = CreateButtonAPI($playerID, "Ok", 99, "OK", "20px");
     if (GetDQHelpText() != "-") $caption = implode(" ", explode("_", GetDQHelpText()));
-    else $caption = "Choose " . TypeToPlay($turn[0]);
+    else $caption = "Choose " . TypeToPlay($gamestate->turn[0]);
     $playerInputPopup->popup = CreatePopupAPI("OK", [], 0, 1, $caption, 1, "");
   }
 
-  if (($turn[0] == "OPT" || $turn[0] == "CHOOSETOP" || $turn[0] == "MAYCHOOSETOP" || $turn[0] == "CHOOSEBOTTOM" || $turn[0] == "CHOOSECARD" || $turn[0] == "MAYCHOOSECARD") && $turn[1] == $playerID) {
+  if (($gamestate->turn[0] == "OPT" || $gamestate->turn[0] == "CHOOSETOP" || $gamestate->turn[0] == "MAYCHOOSETOP" || $gamestate->turn[0] == "CHOOSEBOTTOM" || $gamestate->turn[0] == "CHOOSECARD" || $gamestate->turn[0] == "MAYCHOOSECARD") && $gamestate->turn[1] == $playerID) {
     $playerInputPopup->active = true;
-    $options = explode(",", $turn[2]);
+    $options = explode(",", $gamestate->turn[2]);
     $optCards = array();
     for ($i = 0; $i < count($options); ++$i) {
       $optCards[] = JSONRenderedCard($options[$i], action: 0);
       if (
-        $turn[0] == "CHOOSETOP" || $turn[0] == "MAYCHOOSETOP" || $turn[0] == "OPT"
+        $gamestate->turn[0] == "CHOOSETOP" || $gamestate->turn[0] == "MAYCHOOSETOP" || $gamestate->turn[0] == "OPT"
       ) $playerInputButtons[] = CreateButtonAPI($playerID, "Top", 8, $options[$i], "20px");
-      if ($turn[0] == "CHOOSEBOTTOM" || $turn[0] == "OPT") $playerInputButtons[] = CreateButtonAPI($playerID, "Bottom", 9, $options[$i], "20px");
-      if ($turn[0] == "CHOOSECARD" || $turn[0] == "MAYCHOOSECARD") $playerInputButtons[] = CreateButtonAPI($playerID, "Choose", 23, $options[$i], "20px");
+      if ($gamestate->turn[0] == "CHOOSEBOTTOM" || $gamestate->turn[0] == "OPT") $playerInputButtons[] = CreateButtonAPI($playerID, "Bottom", 9, $options[$i], "20px");
+      if ($gamestate->turn[0] == "CHOOSECARD" || $gamestate->turn[0] == "MAYCHOOSECARD") $playerInputButtons[] = CreateButtonAPI($playerID, "Choose", 23, $options[$i], "20px");
     }
-    $playerInputPopup->popup = CreatePopupAPI("OPT", [], 0, 1, "Choose " . TypeToPlay($turn[0]), 1, "", cardsArray: $optCards);
+    $playerInputPopup->popup = CreatePopupAPI("OPT", [], 0, 1, "Choose " . TypeToPlay($gamestate->turn[0]), 1, "", cardsArray: $optCards);
   }
 
-  if (($turn[0] == "CHOOSETOPOPPONENT") && $turn[1] == $playerID
+  if (($gamestate->turn[0] == "CHOOSETOPOPPONENT") && $gamestate->turn[1] == $playerID
   ) { //Use when you have to reorder the top of your opponent library e.g. Righteous Cleansing
     $playerInputPopup->active = true;
     $otherPlayer = ($playerID == 1 ? 2 : 1);
-    $options = explode(",", $turn[2]);
+    $options = explode(",", $gamestate->turn[2]);
     $optCards = array();
     for ($i = 0; $i < count($options); ++$i) {
       $optCards[] = JSONRenderedCard($options[$i], action: 0);
       if (
-        $turn[0] == "CHOOSETOPOPPONENT"
+        $gamestate->turn[0] == "CHOOSETOPOPPONENT"
       ) $playerInputButtons[] = CreateButtonAPI($otherPlayer, "Top", 29, $options[$i], "20px");
     }
-    $playerInputPopup->popup = CreatePopupAPI("CHOOSETOPOPPONENT", [], 0, 1, "Choose " . TypeToPlay($turn[0]), 1, "", cardsArray: $optCards);
+    $playerInputPopup->popup = CreatePopupAPI("CHOOSETOPOPPONENT", [], 0, 1, "Choose " . TypeToPlay($gamestate->turn[0]), 1, "", cardsArray: $optCards);
   }
 
-  if ($turn[0] == "INPUTCARDNAME" && $turn[1] == $playerID) {
+  if ($gamestate->turn[0] == "INPUTCARDNAME" && $gamestate->turn[1] == $playerID) {
     $playerInputPopup->active = true;
     $playerInputPopup->popup = CreatePopupAPI("INPUTCARDNAME", [], 0, 1, "Name a card");
   }
 
-  if ($turn[0] == "HANDTOPBOTTOM" && $turn[1] == $playerID) {
+  if ($gamestate->turn[0] == "HANDTOPBOTTOM" && $gamestate->turn[1] == $playerID) {
     $playerInputPopup->active = true;
     $cardsArray = array();
     for ($i = 0; $i < count($myHand); ++$i) {
@@ -783,12 +743,12 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
       $playerInputButtons[] = CreateButtonAPI($playerID, "Top", 12, $i, "20px");
       $playerInputButtons[] = CreateButtonAPI($playerID, "Bottom", 13, $i, "20px");
     }
-    $playerInputPopup->popup = CreatePopupAPI("HANDTOPBOTTOM", [], 0, 1, "Choose " . TypeToPlay($turn[0]), 1, "", cardsArray: $cardsArray);
+    $playerInputPopup->popup = CreatePopupAPI("HANDTOPBOTTOM", [], 0, 1, "Choose " . TypeToPlay($gamestate->turn[0]), 1, "", cardsArray: $cardsArray);
   }
 
-  if (($turn[0] == "MAYCHOOSEMULTIZONE" || $turn[0] == "CHOOSEMULTIZONE") && $turn[1] == $playerID) {
+  if (($gamestate->turn[0] == "MAYCHOOSEMULTIZONE" || $gamestate->turn[0] == "CHOOSEMULTIZONE") && $gamestate->turn[1] == $playerID) {
     $playerInputPopup->active = true;
-    $options = explode(",", $turn[2]);
+    $options = explode(",", $gamestate->turn[2]);
     $otherPlayer = $playerID == 2 ? 1 : 2;
     $theirAllies = &GetAllies($otherPlayer);
     $myAllies = &GetAllies($playerID);
@@ -801,21 +761,15 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
       else if ($option[0] == "THEIRCHAR") $source = $theirCharacter;
       else if ($option[0] == "MYITEMS") $source = $myItems;
       else if ($option[0] == "THEIRITEMS") $source = $theirItems;
-      else if ($option[0] == "LAYER") $source = $layers;
+      else if ($option[0] == "LAYER") $source = $gamestate->layers;
       else if ($option[0] == "MYHAND") $source = $myHand;
       else if ($option[0] == "THEIRHAND") $source = $theirHand;
       else if ($option[0] == "MYDISCARD") $source = $myDiscard;
       else if ($option[0] == "THEIRDISCARD") $source = $theirDiscard;
-      else if ($option[0] == "MYBANISH") $source = $myBanish;
-      else if ($option[0] == "THEIRBANISH") $source = $theirBanish;
       else if ($option[0] == "MYALLY") $source = $myAllies;
       else if ($option[0] == "THEIRALLY") $source = $theirAllies;
       else if ($option[0] == "MYARS") $source = $myArsenal;
       else if ($option[0] == "THEIRARS") $source = $theirArsenal;
-      else if ($option[0] == "MYPERM") $source = $myPermanents;
-      else if ($option[0] == "THEIRPERM") $source = $theirPermanents;
-      else if ($option[0] == "MYPITCH") $source = $myPitch;
-      else if ($option[0] == "THEIRPITCH") $source = $theirPitch;
       else if ($option[0] == "MYDECK") $source = $myDeck;
       else if ($option[0] == "THEIRDECK") $source = $theirDeck;
       else if ($option[0] == "MYMATERIAL") $source = $myMaterial;
@@ -830,22 +784,22 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
       $atkCounters = 0;
       $label = "";
 
-      if (($option[0] == "MYALLY" || $option[0] == "THEIRALLY" || $option[0] == "THEIRAURAS") && $option[1] == $attackState[$AS_AttackerIndex]) {
+      if (($option[0] == "MYALLY" || $option[0] == "THEIRALLY" || $option[0] == "THEIRAURAS") && $option[1] == $gamestate->attackState[$AS_AttackerIndex]) {
         $label = "Attacker";
       }
 
-      if (count($layers) > 0) {
-        if ($option[0] == "THEIRALLY" && $layers[0] != "" && $mainPlayer != $currentPlayer) {
+      if (count($gamestate->layers) > 0) {
+        if ($option[0] == "THEIRALLY" && $gamestate->layers[0] != "" && $gamestate->mainPlayer != $gamestate->currentPlayer) {
           $index = SearchLayer($otherPlayer, subtype: "Ally");
           if ($index != "") {
-            $params = explode("|", $layers[$index + 2]);
+            $params = explode("|", $gamestate->layers[$index + 2]);
             if ($option[1] == $params[2]) $label = "Attacker";
           }
         }
-        if ($option[0] == "THEIRAURAS" && $layers[0] != "" && $mainPlayer != $currentPlayer) {
+        if ($option[0] == "THEIRAURAS" && $gamestate->layers[0] != "" && $gamestate->mainPlayer != $gamestate->currentPlayer) {
           $index = SearchLayer($otherPlayer, subtype: "Aura");
           if ($index != "") {
-            $params = explode("|", $layers[$index + 2]);
+            $params = explode("|", $gamestate->layers[$index + 2]);
             if ($option[1] == $params[2]) $label = "Attacker";
           }
         }
@@ -862,7 +816,7 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
       if (str_starts_with($option[0], "MY")) $playerBorderColor = 1;
       else if (str_starts_with($option[0], "THEIR")) $playerBorderColor = 2;
       else if ($option[0] == "LAYER") {
-        $playerBorderColor = ($layers[$index + 1] == $playerID ? 1 : 2);
+        $playerBorderColor = ($gamestate->layers[$index + 1] == $playerID ? 1 : 2);
       }
 
       if ($option[0] == "THEIRARS" && $theirArsenal[$index + 1] == "DOWN") $card = $TheirCardBack;
@@ -891,67 +845,46 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
     $playerInputPopup->popup = CreatePopupAPI("CHOOSEMULTIZONE", [], 0, 1, GetPhaseHelptext(), 1, cardsArray: $cardsMultiZone);
   }
 
-  if (($turn[0] == "MAYCHOOSEDECK" || $turn[0] == "CHOOSEDECK") && $turn[1] == $playerID) {
+  if (($gamestate->turn[0] == "MAYCHOOSEDECK" || $gamestate->turn[0] == "CHOOSEDECK") && $gamestate->turn[1] == $playerID) {
     $playerInputPopup->active = true;
-    $playerInputPopup->popup = ChoosePopup($myDeck, $turn[2], 11, "Choose a card from your deck");
+    $playerInputPopup->popup = ChoosePopup($myDeck, $gamestate->turn[2], 11, "Choose a card from your deck");
   }
 
-  if ($turn[0] == "CHOOSEBANISH" && $turn[1] == $playerID) {
+  if (($gamestate->turn[0] == "CHOOSETHEIRHAND") && $gamestate->turn[1] == $playerID) {
     $playerInputPopup->active = true;
-    $playerInputPopup->popup = ChoosePopup($myBanish, $turn[2], 16, "Choose a card from your banish", BanishPieces());
+    $playerInputPopup->popup = ChoosePopup($theirHand, $gamestate->turn[2], 16, "Choose a card from your opponent's hand");
   }
 
-  if (($turn[0] == "MAYCHOOSEARSENAL" || $turn[0] == "CHOOSEARSENAL" || $turn[0] == "CHOOSEARSENALCANCEL") && $turn[1] == $playerID) {
-    $playerInputPopup->active = true;
-    $playerInputPopup->popup = ChoosePopup($myArsenal, $turn[2], 16, "Choose a card from your arsenal", ArsenalPieces());
-  }
-
-  if (($turn[0] == "CHOOSEPERMANENT" || $turn[0] == "MAYCHOOSEPERMANENT") && $turn[1] == $playerID) {
-    $myPermanents = &GetPermanents($playerID);
-    $playerInputPopup->active = true;
-    $playerInputPopup->popup = ChoosePopup($myPermanents, $turn[2], 16, GetPhaseHelptext(), PermanentPieces());
-  }
-
-  if (($turn[0] == "CHOOSETHEIRHAND") && $turn[1] == $playerID) {
-    $playerInputPopup->active = true;
-    $playerInputPopup->popup = ChoosePopup($theirHand, $turn[2], 16, "Choose a card from your opponent's hand");
-  }
-
-  if (($turn[0] == "CHOOSEMYAURA") && $turn[1] == $playerID) {
-    $playerInputPopup->active = true;
-    $playerInputPopup->popup = ChoosePopup($myAuras, $turn[2], 16, "Choose one of your auras");
-  }
-
-  if (($turn[0] == "CHOOSEDISCARD" || $turn[0] == "MAYCHOOSEDISCARD" || $turn[0] == "CHOOSEDISCARDCANCEL") && $turn[1] == $playerID) {
+  if (($gamestate->turn[0] == "CHOOSEDISCARD" || $gamestate->turn[0] == "MAYCHOOSEDISCARD" || $gamestate->turn[0] == "CHOOSEDISCARDCANCEL") && $gamestate->turn[1] == $playerID) {
     $caption = "Choose a card from your discard";
     if (GetDQHelpText() != "-") $caption = implode(" ", explode("_", GetDQHelpText()));
     $playerInputPopup->active = true;
-    $playerInputPopup->popup = ChoosePopup($myDiscard, $turn[2], 16, $caption);
+    $playerInputPopup->popup = ChoosePopup($myDiscard, $gamestate->turn[2], 16, $caption);
   }
 
-  if (($turn[0] == "MAYCHOOSETHEIRDISCARD") && $turn[1] == $playerID
+  if (($gamestate->turn[0] == "MAYCHOOSETHEIRDISCARD") && $gamestate->turn[1] == $playerID
   ) {
     $playerInputPopup->active = true;
-    $playerInputPopup->popup = ChoosePopup($theirDiscard, $turn[2], 16, "Choose a card from your opponent's graveyard");
+    $playerInputPopup->popup = ChoosePopup($theirDiscard, $gamestate->turn[2], 16, "Choose a card from your opponent's graveyard");
   }
 
-  if ($turn[0] == "CHOOSECHARACTER" && $turn[1] == $playerID) {
+  if ($gamestate->turn[0] == "CHOOSECHARACTER" && $gamestate->turn[1] == $playerID) {
     $playerInputPopup->active = true;
-    $playerInputPopup->popup = ChoosePopup($myCharacter, $turn[2], 16, "Choose a card from your character/equipment", CharacterPieces());
+    $playerInputPopup->popup = ChoosePopup($myCharacter, $gamestate->turn[2], 16, "Choose a card from your character/equipment", CharacterPieces());
   }
 
-  if ($turn[0] == "CHOOSETHEIRCHARACTER" && $turn[1] == $playerID) {
+  if ($gamestate->turn[0] == "CHOOSETHEIRCHARACTER" && $gamestate->turn[1] == $playerID) {
     $playerInputPopup->active = true;
-    $playerInputPopup->popup = ChoosePopup($theirCharacter, $turn[2], 16, "Choose a card from your opponent character/equipment", CharacterPieces());
+    $playerInputPopup->popup = ChoosePopup($theirCharacter, $gamestate->turn[2], 16, "Choose a card from your opponent character/equipment", CharacterPieces());
   }
 
-  if (($turn[0] == "MULTICHOOSETHEIRDISCARD" || $turn[0] == "MULTICHOOSEDISCARD" || $turn[0] == "MULTICHOOSEHAND" || $turn[0] == "MAYMULTICHOOSEHAND" || $turn[0] == "MULTICHOOSEUNIT" || $turn[0] == "MULTICHOOSETHEIRUNIT" || $turn[0] == "MULTICHOOSEDECK" || $turn[0] == "MULTICHOOSETEXT" || $turn[0] == "MAYMULTICHOOSETEXT" || $turn[0] == "MULTICHOOSETHEIRDECK" || $turn[0] == "MAYMULTICHOOSEAURAS") && $currentPlayer == $playerID) {
+  if (($gamestate->turn[0] == "MULTICHOOSETHEIRDISCARD" || $gamestate->turn[0] == "MULTICHOOSEDISCARD" || $gamestate->turn[0] == "MULTICHOOSEHAND" || $gamestate->turn[0] == "MAYMULTICHOOSEHAND" || $gamestate->turn[0] == "MULTICHOOSEUNIT" || $gamestate->turn[0] == "MULTICHOOSETHEIRUNIT" || $gamestate->turn[0] == "MULTICHOOSEDECK" || $gamestate->turn[0] == "MULTICHOOSETEXT" || $gamestate->turn[0] == "MAYMULTICHOOSETEXT" || $gamestate->turn[0] == "MULTICHOOSETHEIRDECK" || $gamestate->turn[0] == "MAYMULTICHOOSEAURAS") && $gamestate->currentPlayer == $playerID) {
     $playerInputPopup->active = true;
     $formOptions = new stdClass();
     $cardsArray = array();
 
     $content = "";
-    $params = explode("-", $turn[2]);
+    $params = explode("-", $gamestate->turn[2]);
     $options = explode(",", $params[1]);
 
     $title = "Choose up to " . $params[0] . " card" . ($params[0] > 1 ? "s." : ".");
@@ -966,7 +899,7 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
     $choiceOptions = "checkbox";
     $playerInputPopup->choiceOptions = $choiceOptions;
 
-    if ($turn[0] == "MULTICHOOSETEXT" || $turn[0] == "MAYMULTICHOOSETEXT") {
+    if ($gamestate->turn[0] == "MULTICHOOSETEXT" || $gamestate->turn[0] == "MAYMULTICHOOSETEXT") {
       $multiChooseText = array();
 
       for ($i = 0; $i < count($options); ++$i) {
@@ -977,26 +910,26 @@ if ($lastUpdate != 0 && $cacheVal <= $lastUpdate) {
       $playerInputPopup->multiChooseText = $multiChooseText;
     } else {
       for ($i = 0; $i < count($options); ++$i) {
-        if ($turn[0] == "MULTICHOOSEDISCARD") $cardsArray[] = JSONRenderedCard($myDiscard[$options[$i]], actionDataOverride: $i);
-        else if ($turn[0] == "MULTICHOOSETHEIRDISCARD") $cardsArray[] = JSONRenderedCard($theirDiscard[$options[$i]], actionDataOverride: $i);
-        else if ($turn[0] == "MULTICHOOSEHAND" || $turn[0] == "MAYMULTICHOOSEHAND") $cardsArray[] = JSONRenderedCard($myHand[$options[$i]], actionDataOverride: $i);
-        else if ($turn[0] == "MULTICHOOSEDECK") $cardsArray[] = JSONRenderedCard($myDeck[$options[$i]], actionDataOverride: $i);
-        else if ($turn[0] == "MULTICHOOSETHEIRDECK") $cardsArray[] = JSONRenderedCard($theirDeck[$options[$i]], actionDataOverride: $i);
-        else if ($turn[0] == "MAYMULTICHOOSEAURAS") $cardsArray[] = JSONRenderedCard($myAuras[$options[$i]], actionDataOverride: $i);
+        if ($gamestate->turn[0] == "MULTICHOOSEDISCARD") $cardsArray[] = JSONRenderedCard($myDiscard[$options[$i]], actionDataOverride: $i);
+        else if ($gamestate->turn[0] == "MULTICHOOSETHEIRDISCARD") $cardsArray[] = JSONRenderedCard($theirDiscard[$options[$i]], actionDataOverride: $i);
+        else if ($gamestate->turn[0] == "MULTICHOOSEHAND" || $gamestate->turn[0] == "MAYMULTICHOOSEHAND") $cardsArray[] = JSONRenderedCard($myHand[$options[$i]], actionDataOverride: $i);
+        else if ($gamestate->turn[0] == "MULTICHOOSEDECK") $cardsArray[] = JSONRenderedCard($myDeck[$options[$i]], actionDataOverride: $i);
+        else if ($gamestate->turn[0] == "MULTICHOOSETHEIRDECK") $cardsArray[] = JSONRenderedCard($theirDeck[$options[$i]], actionDataOverride: $i);
+        else if ($gamestate->turn[0] == "MAYMULTICHOOSEAURAS") $cardsArray[] = JSONRenderedCard($myAuras[$options[$i]], actionDataOverride: $i);
       }
       $caption = "Choose up to $params[0] card" . ($params[0] > 1 ? "s." : ".");
       $playerInputPopup->popup = CreatePopupAPI("MULTICHOOSE", [], 0, 1, $caption, 1, cardsArray: $cardsArray);
     }
   }
 
-  if (($turn[0] == "CHOOSEMYSOUL" || $turn[0] == "MAYCHOOSEMYSOUL") && $turn[1] == $playerID) {
+  if (($gamestate->turn[0] == "CHOOSEMYSOUL" || $gamestate->turn[0] == "MAYCHOOSEMYSOUL") && $gamestate->turn[1] == $playerID) {
     $playerInputPopup->active = true;
-    $playerInputPopup->popup = ChoosePopup($mySoul, $turn[2], 16, "Choose one of your soul", SoulPieces());
+    $playerInputPopup->popup = ChoosePopup($mySoul, $gamestate->turn[2], 16, "Choose one of your soul", SoulPieces());
   }
 
   $playerInputPopup->buttons = $playerInputButtons;
   $response->playerInputPopUp = $playerInputPopup;
-  $response->canPassPhase = (CanPassPhase($turn[0]) && $currentPlayer == $playerID) || (IsReplay() && $playerID == 3);
+  $response->canPassPhase = (CanPassPhase($gamestate->turn[0]) && $gamestate->currentPlayer == $playerID) || (IsReplay() && $playerID == 3);
   // encode and send it out
   echo json_encode($response);
   exit;
@@ -1112,10 +1045,6 @@ function GetZoneRight($zone)
       return intval($rightSideWidth * 1.08) . "px";
     case "DECK":
       return intval($rightSideWidth * 1.08) . "px";
-    case "BANISH":
-      return intval($rightSideWidth * 1.08) . "px";
-    case "PITCH":
-      return (intval($rightSideWidth * 1.18) + $cardWidth) . "px";
   }
 }
 
@@ -1126,10 +1055,6 @@ function GetZoneBottom($zone)
     case "MYDISCARD":
       return ($cardSize * 2 - 25) . "px";
     case "MYDECK":
-      return ($cardSize - 10) . "px";
-    case "MYBANISH":
-      return (5) . "px";
-    case "MYPITCH":
       return ($cardSize - 10) . "px";
   }
 }
@@ -1142,16 +1067,12 @@ function GetZoneTop($zone)
       return ($cardSize * 2 - 25) . "px";
     case "THEIRDECK":
       return ($cardSize - 10) . "px";
-    case "THEIRBANISH":
-      return (5) . "px";
-    case "THEIRPITCH":
-      return ($cardSize - 10) . "px";
   }
 }
 
 function GetPhaseHelptext()
 {
-  global $turn;
-  $defaultText = "Choose " . TypeToPlay($turn[0]);
+  global $gamestate;
+  $defaultText = "Choose " . TypeToPlay($gamestate->turn[0]);
   return (GetDQHelpText() != "-" ? implode(" ", explode("_", GetDQHelpText())) : $defaultText);
 }

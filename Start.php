@@ -10,7 +10,6 @@ include "GameTerms.php";
 include "Libraries/StatFunctions.php";
 include "Libraries/PlayerSettings.php";
 include "Libraries/UILibraries2.php";
-include "AI/CombatDummy.php";
 include_once "./includes/dbh.inc.php";
 include_once "./includes/functions.inc.php";
 include_once "./MenuFiles/StartHelper.php";
@@ -31,60 +30,41 @@ include "MenuFiles/ParseGamefile.php";
 include "MenuFiles/WriteGamefile.php";
 ob_end_clean();
 session_start();
-if($playerID == 1 && isset($_SESSION["p1AuthKey"])) { $targetKey = $p1Key; $authKey = $_SESSION["p1AuthKey"]; }
-else if($playerID == 2 && isset($_SESSION["p2AuthKey"])) { $targetKey = $p2Key; $authKey = $_SESSION["p2AuthKey"]; }
+if($playerID == 1 && isset($_SESSION["p1AuthKey"])) { $targetKey = $gamestate->p1Key; $authKey = $_SESSION["p1AuthKey"]; }
+else if($playerID == 2 && isset($_SESSION["p2AuthKey"])) { $targetKey = $gamestate->p2Key; $authKey = $_SESSION["p2AuthKey"]; }
 if ($authKey != $targetKey) { echo("Invalid auth key"); exit; }
 
 //First initialize the initial state of the game
 $filename = "./Games/" . $gameName . "/gamestate.txt";
 $handler = fopen($filename, "w");
-fwrite($handler, "0 0\r\n"); //Player health totals
 
 //Player 1
 $p1DeckHandler = fopen("./Games/" . $gameName . "/p1Deck.txt", "r");
-initializePlayerState($handler, $p1DeckHandler, 1);
+initializePlayerState($p1DeckHandler, 1);
 fclose($p1DeckHandler);
 
 //Player 2
 $p2DeckHandler = fopen("./Games/" . $gameName . "/p2Deck.txt", "r");
-initializePlayerState($handler, $p2DeckHandler, 2);
+initializePlayerState($p2DeckHandler, 2);
 fclose($p2DeckHandler);
 
-fwrite($handler, "\r\n"); //Landmarks
-fwrite($handler, "0\r\n"); //Game winner (0=none, else player ID)
-fwrite($handler, "$firstPlayer\r\n"); //First Player
-fwrite($handler, "1\r\n"); //Current Player
-fwrite($handler, "1\r\n"); //Current Turn
-fwrite($handler, "M 1\r\n"); //What phase/player is active
-fwrite($handler, "1\r\n"); //Action points
-fwrite($handler, "\r\n"); //unused
-fwrite($handler, "\r\n"); //Attack State
-fwrite($handler, "\r\n"); //Current Turn Effects
-fwrite($handler, "\r\n"); //Current Turn Effects From Combat
-fwrite($handler, "\r\n"); //Next Turn Effects
-fwrite($handler, "\r\n"); //Decision Queue
-fwrite($handler, "0\r\n"); //Decision Queue Variables
-fwrite($handler, "0 - - -\r\n"); //Decision Queue State
-fwrite($handler, "\r\n"); //Layers
-fwrite($handler, "\r\n"); //Layer Priority
-fwrite($handler, "1\r\n"); //What player's turn it is
-fwrite($handler, "\r\n"); //Last Played Card
-fwrite($handler, "\r\n"); //unused
-fwrite($handler, "\r\n"); //unused
-fwrite($handler, $p1Key . "\r\n"); //Player 1 auth key
-fwrite($handler, $p2Key . "\r\n"); //Player 2 auth key
-fwrite($handler, 0 . "\r\n"); //Permanent unique ID counter
-fwrite($handler, "0\r\n"); //Game status -- 0 = START, 1 = PLAY, 2 = OVER
-fwrite($handler, "\r\n"); //Animations
-fwrite($handler, "0\r\n"); //Current Player activity status -- 0 = active, 2 = inactive
-fwrite($handler, "0\r\n"); //Player1 Rating - 0 = not rated, 1 = green (positive), 2 = red (negative)
-fwrite($handler, "0\r\n"); //Player2 Rating - 0 = not rated, 1 = green (positive), 2 = red (negative)
-fwrite($handler, "0\r\n"); //Player 1 total time
-fwrite($handler, "0\r\n"); //Player 2 total time
-fwrite($handler, time() . "\r\n"); //Last update time
-fwrite($handler, $roguelikeGameID . "\r\n"); //Roguelike game id
-fwrite($handler, "\r\n");//Events
-fwrite($handler, "-");//Effect Context
+$gamestate->playerDamageValues = [0, 0];
+$gamestate->winner = 0;
+//$gamestate->firstPlayer = $firstPlayer;
+$gamestate->currentPlayer = 1;
+$gamestate->currentRound = 1;
+$gamestate->turn = ["M", 1];
+$gamestate->dqVars = ["0"];
+$gamestate->dqState = ["0", "-", "-", "-"];
+$gamestate->mainPlayer = 1;
+$gamestate->permanentUniqueIDCounter = 0;
+$gamestate->inGameStatus = 0;
+$gamestate->p1TotalTime = 0;
+$gamestate->p2TotalTime = 0;
+$gamestate->lastUpdateTime = time();
+$gamestate->EffectContext = "-";
+
+fwrite($handler, serialize($gamestate));
 fclose($handler);
 
 //Set up log file
@@ -98,12 +78,12 @@ $p1Hero = GetCachePiece($gameName, 7);
 $p2Hero = GetCachePiece($gameName, 8);
 $visibility = GetCachePiece($gameName, 9);
 $format = GetCachePiece($gameName, 13);
-$currentPlayer = 0;
+$gamestate->currentPlayer = 0;
 $isReplay = 0;
 WriteCache($gameName, ($currentUpdate + 1) . "!" . $currentTime . "!" . $currentTime . "!-1!-1!" . $currentTime . "!"  . $p1Hero . "!" . $p2Hero . "!" . $visibility . "!" . $isReplay . "!0!0!" . $format . "!" . $MGS_GameStarted); //Initialize SHMOP cache for this game
 
 ob_start();
-include "ParseGamestate.php";
+include "ParseGamestate.php"; //Possibly don't need this here anymore because we kept the data saved in $gamestate?
 include "StartEffects.php";
 ob_end_clean();
 //Update the game file to show that the game has started and other players can join to spectate

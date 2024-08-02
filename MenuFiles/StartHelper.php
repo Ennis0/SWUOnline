@@ -1,58 +1,17 @@
 <?php
 
-function initializePlayerState($handler, $deckHandler, $player)
+function initializePlayerState($deckHandler, $player)
 {
-  global $p1IsPatron, $p2IsPatron, $p1IsChallengeActive, $p2IsChallengeActive, $p1id, $p2id;
+  global $gamestate;
+  global $p1IsPatron, $p2IsPatron, $p1id, $p2id;
   global $SET_AlwaysHoldPriority, $SET_TryUI2, $SET_DarkMode, $SET_ManualMode, $SET_SkipARs, $SET_SkipDRs, $SET_PassDRStep, $SET_AutotargetArcane;
   global $SET_ColorblindMode, $SET_EnableDynamicScaling, $SET_Mute, $SET_Cardback, $SET_IsPatron;
   global $SET_MuteChat, $SET_DisableStats, $SET_CasterMode, $SET_Language, $SET_DisableAnimations;
+
   $materialDeck = GetArray($deckHandler);
   $deckCards = GetArray($deckHandler);
   $deckSize = count($deckCards);
-  fwrite($handler, "\r\n"); //Hand
 
-  if($player == 1) $p1IsChallengeActive = "0";
-  else if($player == 2) $p2IsChallengeActive = "0";
-
-  //Equipment challenge
-  /*
-  if($charEquip[0] != "ARC001" && $charEquip[0] != "ARC002" && $charEquip[1] == "CRU177")
-  {
-    if($player == 1) $p1IsChallengeActive = "1";
-    else if($player == 2) $p2IsChallengeActive = "1";
-  }
-  */
-/*
-  $challengeThreshold = (CharacterHealth($charEquip[0]) > 25 ? 6 : 4);
-  $numChallengeCard = 0;
-  for($i=0; $i<count($deckCards); ++$i)
-  {
-    if($deckCards[$i] == "ARC185") ++$numChallengeCard;
-    if($deckCards[$i] == "ARC186") ++$numChallengeCard;
-    if($deckCards[$i] == "ARC187") ++$numChallengeCard;
-  }
-  if($player == 1 && $numChallengeCard >= $challengeThreshold) $p1IsChallengeActive = "1";
-  else if($player == 2 && $numChallengeCard >= $challengeThreshold) $p2IsChallengeActive = "1";
-*/
-  fwrite($handler, implode(" ", $deckCards) . "\r\n");
-
-  fwrite($handler, "\r\n");//Character
-
-  fwrite($handler, "0 0\r\n"); //Resources float/needed
-  fwrite($handler, "\r\n"); //Arsenal
-  fwrite($handler, "\r\n"); //Item
-  fwrite($handler, "\r\n"); //Aura
-  fwrite($handler, "\r\n"); //Discard
-  fwrite($handler, "\r\n"); //Pitch
-  fwrite($handler, "\r\n"); //Banish
-  fwrite($handler, "0 0 0 0 0 0 0 0 DOWN 0 -1 0 0 0 0 0 0 -1 0 0 0 0 NA 0 0 0 - -1 0 0 0 0 0 0 - 0 0 0 0 0 0 0 0 - - 0 -1 0 0 0 0 0 - 0 0 0 0 0 -1 0 - 0 0 - 0 0\r\n"); //Class State
-  fwrite($handler, "\r\n"); //Character effects
-  fwrite($handler, implode(" ", $materialDeck) . "\r\n");//Material deck
-  fwrite($handler, "\r\n"); //Card Stats
-  fwrite($handler, "\r\n"); //Turn Stats
-  fwrite($handler, "\r\n"); //Allies
-  fwrite($handler, "\r\n"); //Permanents
-  $holdPriority = "0"; //Auto-pass layers
   $isPatron = ($player == 1 ? $p1IsPatron : $p2IsPatron);
   if($isPatron == "") $isPatron = "0";
   $mute = 0;
@@ -66,7 +25,7 @@ function initializePlayerState($handler, $deckHandler, $player)
     {
       case $SET_Mute: $value = $mute; break;
       case $SET_IsPatron: $value = $isPatron; break;
-      default: $value = SettingDefaultValue($i, $materialDeck[0]); break;
+      default: $value = SettingDefaultValue($i, ""); break;
     }
     $settingArray[] = $value;
   }
@@ -74,7 +33,23 @@ function initializePlayerState($handler, $deckHandler, $player)
   {
     $settingArray[$savedSettings[intval($i)]] = $savedSettings[intval($i)+1];
   }
-  fwrite($handler, implode(" ", $settingArray) . "\r\n"); //Settings
+  
+  if($player == 1){
+    $gamestate->p1Hand = [];
+    $gamestate->p1Deck = $deckCards;
+    $gamestate->p1Material = $materialDeck;
+    $gamestate->p1Resources = "0 0";
+    $gamestate->p1ClassState = "0 0 0 0 0 0 0 0 DOWN 0 -1 0 0 0 0 0 0 -1 0 0 0 0 NA 0 0 0 - -1 0 0 0 0 0 0 - 0 0 0 0 0 0 0 0 - - 0 -1 0 0 0 0 0 - 0 0 0 0 0 -1 0 - 0 0 - 0 0";
+    $gamestate->p1Settings = $settingArray;
+  }
+  else {
+    $gamestate->p2Hand = [];
+    $gamestate->p2Deck = $deckCards;
+    $gamestate->p2Material = $materialDeck;
+    $gamestate->p2Resources = "0 0";
+    $gamestate->p2ClassState = "0 0 0 0 0 0 0 0 DOWN 0 -1 0 0 0 0 0 0 -1 0 0 0 0 NA 0 0 0 - -1 0 0 0 0 0 0 - 0 0 0 0 0 0 0 0 - - 0 -1 0 0 0 0 0 - 0 0 0 0 0 -1 0 - 0 0 - 0 0";
+    $gamestate->p2Settings = $settingArray;
+  }
 }
 
 function SettingDefaultValue($setting, $hero)

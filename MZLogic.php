@@ -55,8 +55,6 @@ function MZRemove($player, $lastResult)
       case "MYDISCARD": $lastResult = RemoveGraveyard($player, $mzIndex[1]); break;
       case "THEIRDISCARD": $lastResult = RemoveGraveyard($otherPlayer, $mzIndex[1]); break;
       case "THEIRITEMS": $lastResult = DestroyItemForPlayer($otherPlayer, $mzIndex[1], true); break;
-      case "MYBANISH": RemoveBanish($player, $mzIndex[1]); break;
-      case "THEIRBANISH": RemoveBanish($otherPlayer, $mzIndex[1]); break;
       case "MYALLY": $lastResult = RemoveAlly($player, $mzIndex[1]); break;
       case "THEIRALLY": $lastResult = RemoveAlly($otherPlayer, $mzIndex[1]); break;
       case "MYRESOURCES": $lastResult = RemoveArsenal($player, $mzIndex[1]); break;
@@ -83,7 +81,6 @@ function MZGetUniqueID($mzIndex, $player)
   $zone = &GetMZZone($player, $mzArr[0]);
   switch($mzArr[0]) {
     case "ALLY": case "MYALLY": case "THEIRALLY": return $zone[$mzArr[1] + 5];
-    case "BANISH": case "MYBANISH": case "THEIRBANISH": return $zone[$mzArr[1] + 2];
     default: return "-";
   }
 }
@@ -122,7 +119,6 @@ function MZAddZone($player, $parameter, $lastResult)
   {
     switch($params[0])
     {
-      case "MYBANISH": BanishCardForPlayer($cardIDs[$i], $player, $params[1], $params[2]); break;
       case "MYHAND": AddPlayerHand($cardIDs[$i], $player, "-"); break;
       case "MYRESOURCES": AddResources($cardIDs[$i], $player, "HAND", "DOWN"); break;
       case "MYTOPDECK": AddTopDeck($cardIDs[$i], $player, "-"); break;
@@ -131,7 +127,6 @@ function MZAddZone($player, $parameter, $lastResult)
       case "MYMEMORY": AddMemory($cardIDs[$i], $player, $params[1], $params[2]); break;
       case "THEIRMATERIAL": AddMaterial($cardIDs[$i], $otherPlayer, $params[1]); break;
       case "THEIRRESOURCES": AddResources($cardIDs[$i], $player, "HAND", "DOWN"); break;
-      case "THEIRBANISH": BanishCardForPlayer($cardIDs[$i], $otherPlayer, $params[1], $params[2]); break;
       case "MYDISCARD":
         $from = $params[1];
         AddGraveyard($cardIDs[$i], $player, "-", $from);
@@ -165,9 +160,9 @@ function MZPlayCard($player, $mzIndex) {
 
 function MZAttack($player, $mzIndex)
 {
-  global $CS_CharacterIndex, $CS_PlayIndex, $CS_AbilityIndex, $currentPlayer, $mainPlayer, $defPlayer;
-  $currentPlayer = $player;
-  $mainPlayer = $player;
+  global $CS_CharacterIndex, $CS_PlayIndex, $CS_AbilityIndex, $gamestate, $defPlayer;
+  $gamestate->currentPlayer = $player;
+  $gamestate->mainPlayer = $player;
   $defPlayer = ($player == 1 ? 2 : 1);
   $ally = new Ally($mzIndex, $player);
   $ally->Exhaust();
@@ -176,21 +171,6 @@ function MZAttack($player, $mzIndex)
   $abilityIndex = GetAbilityIndex($ally->CardID(), $ally->Index(), "Attack");
   SetClassState($player, $CS_AbilityIndex, $abilityIndex);
   PlayCard($ally->CardID(), "PLAY", -1, $ally->Index(), $ally->UniqueID(), skipAbilityType:true);
-}
-
-function MZBanish($player, $parameter, $lastResult)
-{
-  $lastResultArr = explode(",", $lastResult);
-  $params = explode(",", $parameter);
-  $otherPlayer = ($player == 1 ? 2 : 1);
-  for($i = 0; $i < count($lastResultArr); ++$i) {
-    $mzIndex = explode("-", $lastResultArr[$i]);
-    $cardOwner = (str_starts_with($mzIndex[0], "MY") ? $player : $otherPlayer);
-    $zone = &GetMZZone($cardOwner, $mzIndex[0]);
-    BanishCardForPlayer($zone[$mzIndex[1]], $cardOwner, $params[0], $params[1], $params[2]);
-  }
-  if(count($params) <= 3) WriteLog(CardLink($zone[$mzIndex[1]], $zone[$mzIndex[1]]) . " was banished");
-  return $lastResult;
 }
 
 function MZGainControl($player, $target)
@@ -219,9 +199,9 @@ function MZAddHealth($player, $target, $amount=1)
 
 function MZFreeze($target)
 {
-  global $currentPlayer;
+  global $gamestate;
   $pieces = explode("-", $target);
-  $player = (str_starts_with($pieces[0], "MY") ? $currentPlayer : ($currentPlayer == 1 ? 2 : 1));
+  $player = (str_starts_with($pieces[0], "MY") ? $gamestate->currentPlayer : ($gamestate->currentPlayer == 1 ? 2 : 1));
   $zone = &GetMZZone($player, $pieces[0]);
   switch ($pieces[0]) {
     case "THEIRCHAR": case "MYCHAR":
@@ -321,28 +301,6 @@ function MZSink($player, $target)
   }
 }
 
-function MZSuppress($player, $target)
-{
-  $pieces = explode("-", $target);
-  $player = (str_starts_with($pieces[0], "MY") ? $player : ($player == 1 ? 2 : 1));
-  $zone = &GetMZZone($player, $pieces[0]);
-  switch($pieces[0]) {
-    case "THEIRALLY": case "MYALLY":
-      $cardID = RemoveAlly($player, $pieces[1]);
-      BanishCardForPlayer($cardID, $player, "PLAY", "SUPPRESS", $player);
-      break;
-    case "THEIRITEMS": case "MYITEMS":
-      $cardID = DestroyItemForPlayer($player, $pieces[1], true);
-      BanishCardForPlayer($cardID, $player, "PLAY", "SUPPRESS", $player);
-      break;
-    case "THEIRCHAR": case "MYCHAR":
-      $cardID = RemoveCharacter($player, $pieces[1]);
-      BanishCardForPlayer($cardID, $player, "PLAY", "SUPPRESS", $player);
-      break;
-    default: break;
-  }
-}
-
 function MZSort($mzIndices)
 {
   $output = "";
@@ -425,14 +383,6 @@ function MZStartTurnAbility($player, $MZIndex)
   $cardID = GetMZCard($player, $MZIndex);
   switch($cardID)
   {
-    case "UPR086":
-      AddDecisionQueue("PASSPARAMETER", $player, $MZIndex);
-      AddDecisionQueue("MZREMOVE", $player, "-", 1);
-      AddDecisionQueue("MULTIBANISH", $player, "GY,-", 1);
-      AddDecisionQueue("FINDINDICES", $player, "UPR086");
-      AddDecisionQueue("CHOOSEMULTIZONE", $player, "<-", 1);
-      AddDecisionQueue("AFTERTHAW", $player, "<-", 1);
-      break;
     default: break;
   }
 }

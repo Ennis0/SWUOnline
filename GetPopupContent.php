@@ -31,9 +31,6 @@ $cardSize = 120;
 $params = explode("-", $popupType);
 $popupType = $params[0];
 switch ($popupType) {
-  case "myPitchPopup":
-    echo (CreatePopup("myPitchPopup", $myPitch, 1, 0, "Your Pitch"));
-    break;
   case "myResourcePopup":
     if($playerID == 3) echo (CreatePopup("myResourcePopup", $myArsenal, 1, 0, "Your Resources", ResourcePieces()));
     else echo (CreatePopup("myResourcePopup", [], 1, 0, "Your Resources", 1, ResourceUI()));
@@ -41,13 +38,6 @@ switch ($popupType) {
   case "myDiscardPopup":
     if($playerID == 3) echo (CreatePopup("myDiscardPopup", $myDiscard, 1, 0, "Your Discard", DiscardPieces()));
     else echo (CreatePopup("myDiscardPopup", [], 1, 0, "Your Discard", 1, DiscardUI()));
-    break;
-  case "myBanishPopup":
-    if ($playerID == 3) {
-      $myBanishDisplay = GetMyBanishForDisplay($playerID);
-      echo (CreatePopup("myBanishPopup", $myBanishDisplay, 1, 0, "Banish Zone"));
-    }
-    else echo (CreatePopup("myBanishPopup", [], 1, 0, "Your Banish", 1, BanishUI()));
     break;
   case "myDeckPopup":
     echo (CreatePopup("myDeckPopup", $myDeck, 1, 0, "Your Deck (In order from top to bottom"));
@@ -69,11 +59,11 @@ switch ($popupType) {
         $content .= CreateButton($playerID, "Report Bug", 100003, 0, "24px") . "<BR>";
       }
       $content .= "</div>";
-      $time = ($playerID == 1 ? $p1TotalTime : $p2TotalTime);
-      $totalTime = $p1TotalTime + $p2TotalTime;
+      $time = ($playerID == 1 ? $gamestate->p1TotalTime : $gamestate->p1TotalTime);
+      $totalTime = $gamestate->p1TotalTime + $gamestate->p1TotalTime;
       $content .= "<BR><span class='Time-Span'>Your Play Time: " . intval($time / 60) . "m" . $time % 60 . "s - Game Time: " . intval($totalTime / 60) . "m" . $totalTime % 60 . "s</span>";
       $content .= CardStats($playerID);
-      echo CreatePopup("OVER", [], 1, 1, "Player " . $winner . " Won! ", 1, $content, "./", true);
+      echo CreatePopup("OVER", [], 1, 1, "Player " . $gamestate->winner . " Won! ", 1, $content, "./", true);
     } else {
       echo (CreatePopup("menuPopup", [], 1, 0, "Main Menu", 1, MainMenuUI(), "./", true));
     }
@@ -81,21 +71,8 @@ switch ($popupType) {
   case "leaveGame":
     echo (CreatePopup("leaveGame", [], 1, 0, "Leave Game", 1, LeaveGameUI(), "./", true));
     break;
-  case "mySoulPopup":
-    echo (CreatePopup("mySoulPopup", $mySoul, 1, 0, "My Soul"));
-    break;
-  case "theirBanishPopup":
-    $theirBanishDisplay = GetTheirBanishForDisplay($playerID);
-    echo (CreatePopup("theirBanishPopup", $theirBanishDisplay, 1, 0, "Opponent's Banish Zone"));
-    break;
-  case "theirPitchPopup":
-    echo (CreatePopup("theirPitchPopup", $theirPitch, 1, 0, "Opponent's Pitch Zone"));
-    break;
   case "theirDiscardPopup":
     echo (CreatePopup("theirDiscardPopup", $theirDiscard, 1, 0, "Opponent's Discard Zone", DiscardPieces()));
-    break;
-  case "theirSoulPopup":
-    echo (CreatePopup("theirSoulPopup", $theirSoul, 1, 0, "Opponent's Soul"));
     break;
   default:
     break;

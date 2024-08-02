@@ -35,14 +35,6 @@ function CharacterPieces()
 }
 
 //0 - Card ID
-//1 - Mods (INT == Intimidated)
-//2 - Unique ID?
-function BanishPieces()
-{
-  return 3;
-}
-
-//0 - Card ID
 //1 - Status (2=ready, 1=unavailable, 0=destroyed)
 //2 - Num counters
 //3 - Num attack counters
@@ -260,18 +252,18 @@ $AS_CantAttackBase = 7;
 
 function ResetAttackState()
 {
-  global $attackState, $AS_AttackerIndex, $AS_IsAmbush, $AS_DamageDealt, $AS_AttackTarget, $AS_AfterAttackLayers, $AS_AttackerUniqueID;
+  global $gamestate, $AS_AttackerIndex, $AS_IsAmbush, $AS_DamageDealt, $AS_AttackTarget, $AS_AfterAttackLayers, $AS_AttackerUniqueID;
   global $AS_AttackTargetUID, $AS_CantAttackBase;
-  global $mainPlayer, $defPlayer;
+  global $gamestate, $defPlayer;
 
-  $attackState[$AS_AttackerIndex] = -1;
-  $attackState[$AS_IsAmbush] = 0;
-  $attackState[$AS_DamageDealt] = 0;
-  $attackState[$AS_AttackTarget] = "NA";
-  $attackState[$AS_AfterAttackLayers] = "NA";
-  $attackState[$AS_AttackerUniqueID] = -1;
-  $attackState[$AS_AttackTargetUID] = "-";
-  $attackState[$AS_CantAttackBase] = 0;
+  $gamestate->attackState[$AS_AttackerIndex] = -1;
+  $gamestate->attackState[$AS_IsAmbush] = 0;
+  $gamestate->attackState[$AS_DamageDealt] = 0;
+  $gamestate->attackState[$AS_AttackTarget] = "NA";
+  $gamestate->attackState[$AS_AfterAttackLayers] = "NA";
+  $gamestate->attackState[$AS_AttackerUniqueID] = -1;
+  $gamestate->attackState[$AS_AttackTargetUID] = "-";
+  $gamestate->attackState[$AS_CantAttackBase] = 0;
 }
 
 function ResetClassState($player)
@@ -359,53 +351,47 @@ function ResetClassState($player)
 
 function SetAttackTarget($mzTarget)
 {
-  global $attackState, $AS_AttackTarget, $AS_AttackTargetUID, $defPlayer;
+  global $gamestate, $AS_AttackTarget, $AS_AttackTargetUID, $defPlayer;
   if($mzTarget == "") return;
   $mzArr = explode("-", $mzTarget);
-  $attackState[$AS_AttackTarget] = $mzTarget;
-  $attackState[$AS_AttackTargetUID] = MZGetUniqueID($mzTarget, $defPlayer);
+  $gamestate->attackState[$AS_AttackTarget] = $mzTarget;
+  $gamestate->attackState[$AS_AttackTargetUID] = MZGetUniqueID($mzTarget, $defPlayer);
 }
 
 function UpdateAttacker() {
-  global $attackState, $AS_AttackerIndex, $AS_AttackerUniqueID, $mainPlayer;
-  $index = SearchAlliesForUniqueID($attackState[$AS_AttackerUniqueID], $mainPlayer);
-  $attackState[$AS_AttackerIndex] = $index == -1 ? $attackState[$AS_AttackerIndex] : $index;
+  global $gamestate, $AS_AttackerIndex, $AS_AttackerUniqueID;
+  $index = SearchAlliesForUniqueID($gamestate->attackState[$AS_AttackerUniqueID], $gamestate->mainPlayer);
+  $gamestate->attackState[$AS_AttackerIndex] = $index == -1 ? $gamestate->attackState[$AS_AttackerIndex] : $index;
 }
 
 function UpdateAttackTarget() {
-  global $attackState, $AS_AttackTarget, $AS_AttackTargetUID, $defPlayer;
-  $mzArr = explode("-", $attackState[$AS_AttackTarget]);
+  global $gamestate, $AS_AttackTarget, $AS_AttackTargetUID, $defPlayer;
+  $mzArr = explode("-", $gamestate->attackState[$AS_AttackTarget]);
   if($mzArr[0] = "THEIRCHAR") return;
-  $index = SearchAlliesForUniqueID($attackState[$AS_AttackTargetUID], $defPlayer);
-  $attackState[$AS_AttackTarget] = $index == -1 ? "NA" : $mzArr[0] . "-" . $index;
+  $index = SearchAlliesForUniqueID($gamestate->attackState[$AS_AttackTargetUID], $defPlayer);
+  $gamestate->attackState[$AS_AttackTarget] = $index == -1 ? "NA" : $mzArr[0] . "-" . $index;
 }
 
 function GetAttackTarget()
 {
-  global $attackState, $AS_AttackTarget, $AS_AttackTargetUID, $defPlayer;
-  $uid = $attackState[$AS_AttackTargetUID];
-  if($uid == "-") return $attackState[$AS_AttackTarget];
-  $mzArr = explode("-", $attackState[$AS_AttackTarget]);
+  global $gamestate, $AS_AttackTarget, $AS_AttackTargetUID, $defPlayer;
+  $uid = $gamestate->attackState[$AS_AttackTargetUID];
+  if($uid == "-") return $gamestate->attackState[$AS_AttackTarget];
+  $mzArr = explode("-", $gamestate->attackState[$AS_AttackTarget]);
   $index = SearchZoneForUniqueID($uid, $defPlayer, $mzArr[0]);
   return $mzArr[0] . "-" . $index;
 }
 
 function ClearAttackTarget() {
-  global $attackState, $AS_AttackTarget, $AS_AttackTargetUID;
-  $attackState[$AS_AttackTarget] = "NA";
-  $attackState[$AS_AttackTargetUID] = "-";
+  global $gamestate, $AS_AttackTarget, $AS_AttackTargetUID;
+  $gamestate->attackState[$AS_AttackTarget] = "NA";
+  $gamestate->attackState[$AS_AttackTargetUID] = "-";
 }
 
 function GetDamagePrevention($player)
 {
   global $CS_DamagePrevention;
   return GetClassState($player, $CS_DamagePrevention);
-}
-
-function AttackPlayedFrom()
-{
-  global $AS_AttackPlayedFrom, $attackState;
-  return $attackState[$AS_AttackPlayedFrom];
 }
 
 function CCOffset($piece)

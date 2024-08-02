@@ -167,10 +167,8 @@ function IsMuted($player)
 
 function IsChatMuted()
 {
-  global $SET_MuteChat;
-  $p1Settings = GetSettings(1);
-  $p2Settings = GetSettings(2);
-  return $p1Settings[$SET_MuteChat] == "1" || $p2Settings[$SET_MuteChat] == "1";
+  global $SET_MuteChat, $gamestate;
+  return $gamestate->p1Settings[$SET_MuteChat] == "1" || $gamestate->p2Settings[$SET_MuteChat] == "1";
 }
 
 function AreStatsDisabled($player)

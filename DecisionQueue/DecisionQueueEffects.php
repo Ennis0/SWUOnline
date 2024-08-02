@@ -186,7 +186,6 @@ function ModalAbilities($player, $card, $lastResult)
 
 function PlayerTargetedAbility($player, $card, $lastResult)
 {
-  global $dqVars;
   $target = ($lastResult == "Target_Opponent" ? ($player == 1 ? 2 : 1) : $player);
   switch($card)
   {
@@ -197,7 +196,7 @@ function PlayerTargetedAbility($player, $card, $lastResult)
 
 function SpecificCardLogic($player, $card, $lastResult)
 {
-  global $dqVars, $CS_DamageDealt;
+  global $gamestate, $CS_DamageDealt;
   switch($card)
   {
     case "FORCETHROW"://Force Throw
@@ -238,7 +237,7 @@ function SpecificCardLogic($player, $card, $lastResult)
       }
       break;
     case "FORACAUSEIBELIEVEIN":
-      $cardArr = explode(",", $dqVars[0]);
+      $cardArr = explode(",", $gamestate->dqVars[0]);
       for($i=0; $i<count($cardArr); ++$i) {
         AddGraveyard($cardArr[$i], $player, "DECK");
       }
@@ -331,19 +330,19 @@ function SpecificCardLogic($player, $card, $lastResult)
       $deck = new Deck($player);
       $deck->Reveal();
       $card = $deck->Remove(0);
-      $dqVars[1] += CardCost($card);
+      $gamestate->dqVars[1] += CardCost($card);
       $deck->Add($card);
-      if($dqVars[1] > 7) {
+      if($gamestate->dqVars[1] > 7) {
         WriteLog("<span style='color:goldenrod;'>Great Kid, Don't Get Cocky...</span>");
         return "";
       }
-      PrependDecisionQueue("MZOP", $player, "DEALDAMAGE," . $dqVars[1], 1);
-      PrependDecisionQueue("PASSPARAMETER", $player, $dqVars[0], 1);
+      PrependDecisionQueue("MZOP", $player, "DEALDAMAGE," . $gamestate->dqVars[1], 1);
+      PrependDecisionQueue("PASSPARAMETER", $player, $gamestate->dqVars[0], 1);
       PrependDecisionQueue("ELSE", $player, "-");
       PrependDecisionQueue("SPECIFICCARD", $player, "DONTGETCOCKY", 1);
       PrependDecisionQueue("NOPASS", $player, "-");
       PrependDecisionQueue("YESNO", $player, "-");
-      PrependDecisionQueue("SETDQCONTEXT", $player, "Do you want to continue? (Damage: " . $dqVars[1] . ")");
+      PrependDecisionQueue("SETDQCONTEXT", $player, "Do you want to continue? (Damage: " . $gamestate->dqVars[1] . ")");
       return $lastResult;
     case "ADMIRALACKBAR":
       $targetCard = GetMZCard($player, $lastResult);
@@ -387,7 +386,7 @@ function SpecificCardLogic($player, $card, $lastResult)
       }
       return $lastResult;
     case "IHADNOCHOICE":
-      $cards = explode(",", MZSort($dqVars[0]));
+      $cards = explode(",", MZSort($gamestate->dqVars[0]));
       for($i=count($cards)-1; $i>=0; --$i) {
         if($cards[$i] == $lastResult) {
           MZBounce($player, $cards[$i]);
@@ -484,16 +483,16 @@ function SpecificCardLogic($player, $card, $lastResult)
       }
       return 1;
     case "SURVIVORS'GAUNTLET":
-      $prefix = str_starts_with($dqVars[1], "MY") ? "MY" : "THEIR";
+      $prefix = str_starts_with($gamestate->dqVars[1], "MY") ? "MY" : "THEIR";
       AddDecisionQueue("MULTIZONEINDICES", $player, $prefix . "ALLY", 1);
       AddDecisionQueue("MZFILTER", $player, "canAttach={0}", 1);
-      AddDecisionQueue("MZFILTER", $player, "index=" . $dqVars[1], 1);
+      AddDecisionQueue("MZFILTER", $player, "index=" . $gamestate->dqVars[1], 1);
       AddDecisionQueue("SETDQCONTEXT", $player, "Choose a unit to move <0> to.", 1);
       AddDecisionQueue("CHOOSEMULTIZONE", $player, "<-", 1);
       AddDecisionQueue("MZOP", $player, "MOVEUPGRADE", 1);
       return 1;
     case "PREVIZSLA":
-      $upgradeID = $dqVars[0];
+      $upgradeID = $gamestate->dqVars[0];
       $upgradeCost = CardCost($upgradeID);
       if(NumResourcesAvailable($player) >= $upgradeCost) {
         AddDecisionQueue("YESNO", $player, "if you want to pay " . $upgradeCost . " to steal " . CardName($upgradeID), 1);
@@ -505,7 +504,7 @@ function SpecificCardLogic($player, $card, $lastResult)
           AddDecisionQueue("MZOP", $player, "MOVEUPGRADE", 1);
         }
         else {
-          AddDecisionQueue("PASSPARAMETER", $player, $dqVars[1], 1);
+          AddDecisionQueue("PASSPARAMETER", $player, $gamestate->dqVars[1], 1);
           AddDecisionQueue("SETDQVAR", $player, "0", 1);
           AddDecisionQueue("PASSPARAMETER", $player, $upgradeID, 1);
           AddDecisionQueue("OP", $player, "DEFEATUPGRADE", 1);

@@ -71,7 +71,7 @@ function CardTalent($cardID)
 
 function RestoreAmount($cardID, $player, $index)
 {
-  global $initiativePlayer;
+  global $gamestate;
   $amount = 0;
   $allies = &GetAllies($player);
   for($i=0; $i<count($allies); $i+=AllyPieces())
@@ -94,7 +94,7 @@ function RestoreAmount($cardID, $player, $index)
   {
     case "0074718689": $amount += 1; break;//Restored Arc 170
     case "1081012039": $amount += 2; break;//Regional Sympathizers
-    case "1611702639": $amount += $initiativePlayer == $player ? 2 : 0; break;//Consortium Starviper
+    case "1611702639": $amount += $gamestate->initiativePlayer == $player ? 2 : 0; break;//Consortium Starviper
     case "4405415770": $amount += 2; break;//Yoda, Old Master
     case "0827076106": $amount += 1; break;//Admiral Ackbar
     case "4919000710": $amount += 2; break;//Home One
@@ -118,7 +118,7 @@ function RestoreAmount($cardID, $player, $index)
 
 function RaidAmount($cardID, $player, $index, $reportMode = false)
 {
-  global $currentTurnEffects;
+  global $gamestate;
   if(!AttackIsOngoing() && !$reportMode) return 0;
   $amount = 0;
   $allies = &GetAllies($player);
@@ -136,10 +136,10 @@ function RaidAmount($cardID, $player, $index, $reportMode = false)
     }
   }
   $ally = new Ally("MYALLY-" . $index, $player);
-  for($i=0; $i<count($currentTurnEffects); $i+=CurrentTurnPieces()) {
-    if($currentTurnEffects[$i+1] != $player) continue;
-    if($currentTurnEffects[$i+2] != -1 && $currentTurnEffects[$i+2] != $ally->UniqueID()) continue;
-    switch($currentTurnEffects[$i]) {
+  for($i=0; $i<count($gamestate->currentTurnEffects); $i+=CurrentTurnPieces()) {
+    if($gamestate->currentTurnEffects[$i+1] != $player) continue;
+    if($gamestate->currentTurnEffects[$i+2] != -1 && $gamestate->currentTurnEffects[$i+2] != $ally->UniqueID()) continue;
+    switch($gamestate->currentTurnEffects[$i]) {
       case "0256267292"://Benthic "Two Tubes"
         $amount += 2;
         break;
@@ -178,14 +178,14 @@ function RaidAmount($cardID, $player, $index, $reportMode = false)
 
 function HasSentinel($cardID, $player, $index)
 {
-  global $initiativePlayer, $currentTurnEffects;
+  global $gamestate;
   $ally = new Ally("MYALLY-" . $index, $player);
   if($ally->LostAbilities()) return false;
   $hasSentinel = false;
-  for($i=0; $i<count($currentTurnEffects); $i+=CurrentTurnPieces()) {
-    if($currentTurnEffects[$i+1] != $player) continue;
-    if($currentTurnEffects[$i+2] != -1 && $currentTurnEffects[$i+2] != $ally->UniqueID()) continue;
-    switch($currentTurnEffects[$i]) {
+  for($i=0; $i<count($gamestate->currentTurnEffects); $i+=CurrentTurnPieces()) {
+    if($gamestate->currentTurnEffects[$i+1] != $player) continue;
+    if($gamestate->currentTurnEffects[$i+2] != -1 && $gamestate->currentTurnEffects[$i+2] != $ally->UniqueID()) continue;
+    switch($gamestate->currentTurnEffects[$i]) {
       case "8294130780": $hasSentinel = true; break;//Gladiator Star Destroyer
       case "3572356139": $hasSentinel = true; break;//Chewbacca, Walking Carpet
       case "3468546373": $hasSentinel = true; break;//General Rieekan
@@ -234,7 +234,7 @@ function HasSentinel($cardID, $player, $index)
       $ally = new Ally("MYALLY-" . $index, $player);
       return !$ally->IsDamaged();
     case "5879557998"://Baze Melbus
-      return $initiativePlayer == $player;
+      return $gamestate->initiativePlayer == $player;
     case "1780978508"://Emperor's Royal Guard
       return SearchCount(SearchAllies($player, trait:"Official")) > 0;
     case "9405733493"://Protector of the Throne
@@ -293,7 +293,7 @@ function HasGrit($cardID, $player, $index)
 
 function HasOverwhelm($cardID, $player, $index)
 {
-  global $defPlayer, $currentTurnEffects, $mainPlayer;
+  global $defPlayer, $gamestate;
   $ally = new Ally("MYALLY-" . $index, $player);
   if($ally->LostAbilities()) return false;
   $allies = &GetAllies($player);
@@ -307,10 +307,10 @@ function HasOverwhelm($cardID, $player, $index)
       default: break;
     }
   }
-  for($i=0; $i<count($currentTurnEffects); $i+=CurrentTurnPieces()) {
-    if($currentTurnEffects[$i+1] != $player) continue;
-    if($currentTurnEffects[$i+2] != -1 && $currentTurnEffects[$i+2] != $ally->UniqueID()) continue;
-    switch($currentTurnEffects[$i]) {
+  for($i=0; $i<count($gamestate->currentTurnEffects); $i+=CurrentTurnPieces()) {
+    if($gamestate->currentTurnEffects[$i+1] != $player) continue;
+    if($gamestate->currentTurnEffects[$i+2] != -1 && $gamestate->currentTurnEffects[$i+2] != $ally->UniqueID()) continue;
+    switch($gamestate->currentTurnEffects[$i]) {
       case "4085341914": return true;//Heroic Resolve
       default: break;
     }
@@ -345,7 +345,7 @@ function HasOverwhelm($cardID, $player, $index)
     case "3487311898"://Clan Challengers
       return $ally->IsUpgraded();
     case "6769342445"://Jango Fett
-      if(IsAllyAttackTarget() && $mainPlayer == $player) {
+      if(IsAllyAttackTarget() && $gamestate->mainPlayer == $player) {
         $targetAlly = new Ally(GetAttackTarget(), $defPlayer);
         if($targetAlly->HasBounty()) return true;
       }
@@ -356,12 +356,12 @@ function HasOverwhelm($cardID, $player, $index)
 
 function HasAmbush($cardID, $player, $index, $from)
 {
-  global $currentTurnEffects;
+  global $gamestate;
   $ally = new Ally("MYALLY-" . $index, $player);
-  for($i=count($currentTurnEffects)-CurrentTurnPieces(); $i>=0; $i-=CurrentTurnPieces()) {
-    if($currentTurnEffects[$i+1] != $player) continue;
-    if($currentTurnEffects[$i+2] != -1 && $currentTurnEffects[$i+2] != $ally->UniqueID()) continue;
-    switch($currentTurnEffects[$i]) {
+  for($i=count($gamestate->currentTurnEffects)-CurrentTurnPieces(); $i>=0; $i-=CurrentTurnPieces()) {
+    if($gamestate->currentTurnEffects[$i+1] != $player) continue;
+    if($gamestate->currentTurnEffects[$i+2] != -1 && $gamestate->currentTurnEffects[$i+2] != $ally->UniqueID()) continue;
+    switch($gamestate->currentTurnEffects[$i]) {
       case "8327910265":
         RemoveCurrentTurnEffect($i);
         return true;//Energy Conversion Lab (ECL)
@@ -461,13 +461,13 @@ function HasShielded($cardID, $player, $index)
 
 function HasSaboteur($cardID, $player, $index)
 {
-  global $currentTurnEffects;
+  global $gamestate;
   $ally = new Ally("MYALLY-" . $index, $player);
   if($ally->LostAbilities()) return false;
-  for($i=0; $i<count($currentTurnEffects); $i+=CurrentTurnPieces()) {
-    if($currentTurnEffects[$i+1] != $player) continue;
-    if($currentTurnEffects[$i+2] != -1 && $currentTurnEffects[$i+2] != $ally->UniqueID()) continue;
-    switch($currentTurnEffects[$i]) {
+  for($i=0; $i<count($gamestate->currentTurnEffects); $i+=CurrentTurnPieces()) {
+    if($gamestate->currentTurnEffects[$i+1] != $player) continue;
+    if($gamestate->currentTurnEffects[$i+2] != -1 && $gamestate->currentTurnEffects[$i+2] != $ally->UniqueID()) continue;
+    switch($gamestate->currentTurnEffects[$i]) {
       case "4663781580": return true;//Swoop Down
       case "9210902604": return true;//Precision Fire
       default: break;
@@ -523,13 +523,13 @@ function HasCleave($cardID)
 
 function HasTrueSight($cardID, $player, $index)
 {
-  global $currentTurnEffects;
+  global $gamestate;
   $allies = &GetAllies($player);
   $uniqueID = $allies[$index+5];
-  for($i=0; $i<count($currentTurnEffects); $i+=CurrentTurnPieces())
+  for($i=0; $i<count($gamestate->currentTurnEffects); $i+=CurrentTurnPieces())
   {
-    if($currentTurnEffects[$i+2] != $uniqueID) continue;
-    switch($currentTurnEffects[$i])
+    if($gamestate->currentTurnEffects[$i+2] != $uniqueID) continue;
+    switch($gamestate->currentTurnEffects[$i])
     {
       case "i1f0ht2tsn-TRUE": return true;
       default: break;
@@ -593,7 +593,7 @@ function PrepareAmount($cardID)
 
 function AbilityCost($cardID, $index=-1)
 {
-  global $currentPlayer;
+  global $gamestate;
   $abilityName = GetResolvedAbilityName($cardID);
   if($abilityName == "Heroic Resolve") return 2;
   switch($cardID) {
@@ -629,10 +629,10 @@ function AbilityCost($cardID, $index=-1)
 
 function DynamicCost($cardID)
 {
-  global $currentPlayer;
+  global $gamestate;
   switch($cardID) {
     case "2639435822"://Force Lightning
-      if(SearchCount(SearchAllies($currentPlayer, trait:"Force")) > 0) return "1,2,3,4,5,6,7,8,9,10";
+      if(SearchCount(SearchAllies($gamestate->currentPlayer, trait:"Force")) > 0) return "1,2,3,4,5,6,7,8,9,10";
       return "1";
     default: return "";
   }
@@ -650,7 +650,7 @@ function BlockValue($cardID)
 
 function AttackValue($cardID)
 {
-  global $attackState, $mainPlayer, $currentPlayer;
+  global $gamestate;
   if(!$cardID) return "";
   switch($cardID)
   {
@@ -672,7 +672,7 @@ function HasGoAgain($cardID)
 
 function GetAbilityType($cardID, $index = -1, $from="-")
 {
-  global $currentPlayer;
+  global $gamestate;
   if($from == "PLAY" && IsAlly($cardID)) return "AA";
   switch($cardID)
   {
@@ -687,7 +687,7 @@ function GetAbilityType($cardID, $index = -1, $from="-")
     case "4626028465"://Boba Fett
     case "7440067052"://Hera Syndulla
     case "8560666697"://Director Krennic
-      $char = &GetPlayerCharacter($currentPlayer);
+      $char = &GetPlayerCharacter($gamestate->currentPlayer);
       return $char[CharacterPieces() + 2] == 0 ? "A" : "";
     default: return "";
   }
@@ -695,7 +695,7 @@ function GetAbilityType($cardID, $index = -1, $from="-")
 
 function GetAbilityTypes($cardID, $index = -1, $from="-")
 {
-  global $currentPlayer;
+  global $gamestate;
   $abilityTypes = "";
   switch($cardID) {
     case "2554951775"://Bail Organa
@@ -753,7 +753,7 @@ function GetAbilityTypes($cardID, $index = -1, $from="-")
       $abilityTypes = "A,AA";
       break;
     case "5784497124"://Emperor Palpatine
-      $allies = &GetAllies($currentPlayer);
+      $allies = &GetAllies($gamestate->currentPlayer);
       if(count($allies) == 0) break;
       $abilityTypes = "A";
       break;
@@ -828,9 +828,9 @@ function GetAbilityTypes($cardID, $index = -1, $from="-")
       break;
     default: break;
   }
-  if(IsAlly($cardID, $currentPlayer)) {
+  if(IsAlly($cardID, $gamestate->currentPlayer)) {
     if($abilityTypes == "") $abilityTypes = "AA";
-    $ally = new Ally("MYALLY-" . $index, $currentPlayer);
+    $ally = new Ally("MYALLY-" . $index, $gamestate->currentPlayer);
     $upgrades = $ally->GetUpgrades();
     for($i=0; $i<count($upgrades); ++$i) {
       switch($upgrades[$i]) {
@@ -842,8 +842,8 @@ function GetAbilityTypes($cardID, $index = -1, $from="-")
       }
     }
   }
-  else if(DefinedTypesContains($cardID, "Leader", $currentPlayer)) {
-    $char = &GetPlayerCharacter($currentPlayer);
+  else if(DefinedTypesContains($cardID, "Leader", $gamestate->currentPlayer)) {
+    $char = &GetPlayerCharacter($gamestate->currentPlayer);
     if($char[CharacterPieces() + 1] == 1) $abilityTypes = "";
     if($char[CharacterPieces() + 2] == 0) {
       if($abilityTypes != "") $abilityTypes .= ",";
@@ -859,7 +859,7 @@ function IsLeader($cardID, $playerID = "") {
 
 function GetAbilityNames($cardID, $index = -1, $validate=false)
 {
-  global $currentPlayer;
+  global $gamestate;
   $abilityNames = "";
   switch ($cardID) {
     case "2554951775"://Bail Organa
@@ -896,7 +896,7 @@ function GetAbilityNames($cardID, $index = -1, $validate=false)
       $abilityNames = "Buff Attack";
       break;
     case "4300219753"://Fett's Firespray
-      $ally = new Ally("MYALLY-" . $index, $currentPlayer);
+      $ally = new Ally("MYALLY-" . $index, $gamestate->currentPlayer);
       if($validate) $abilityNames = $ally->IsExhausted() ? "Exhaust" : "Exhaust,Attack";
       else $abilityNames = "Exhaust,Attack";
       break;
@@ -919,7 +919,7 @@ function GetAbilityNames($cardID, $index = -1, $validate=false)
       $abilityNames = "Play Event,Attack";
       break;
     case "5784497124"://Emperor Palpatine
-      $allies = &GetAllies($currentPlayer);
+      $allies = &GetAllies($gamestate->currentPlayer);
       if(count($allies) == 0) break;
       $abilityNames = "Deal Damage";
       break;
@@ -994,9 +994,9 @@ function GetAbilityNames($cardID, $index = -1, $validate=false)
       break;
     default: break;
   }
-  if(IsAlly($cardID, $currentPlayer)) {
+  if(IsAlly($cardID, $gamestate->currentPlayer)) {
     if($abilityNames == "") $abilityNames = "Attack";
-    $ally = new Ally("MYALLY-" . $index, $currentPlayer);
+    $ally = new Ally("MYALLY-" . $index, $gamestate->currentPlayer);
     $upgrades = $ally->GetUpgrades();
     for($i=0; $i<count($upgrades); ++$i) {
       switch($upgrades[$i]) {
@@ -1008,8 +1008,8 @@ function GetAbilityNames($cardID, $index = -1, $validate=false)
       }
     }
   }
-  else if(DefinedTypesContains($cardID, "Leader", $currentPlayer)) {
-    $char = &GetPlayerCharacter($currentPlayer);
+  else if(DefinedTypesContains($cardID, "Leader", $gamestate->currentPlayer)) {
+    $char = &GetPlayerCharacter($gamestate->currentPlayer);
     if($char[CharacterPieces() + 1] == 1) $abilityNames = "";
     if($char[CharacterPieces() + 2] == 0) {
       if($abilityNames != "") $abilityNames .= ",";
@@ -1031,10 +1031,10 @@ function GetAbilityIndex($cardID, $index, $abilityName)
 
 function GetResolvedAbilityType($cardID, $from="-")
 {
-  global $currentPlayer, $CS_AbilityIndex, $CS_PlayIndex;
+  global $gamestate, $CS_AbilityIndex, $CS_PlayIndex;
   if($from != "PLAY" && $from != "EQUIP" && $from != "-") return "";
-  $abilityIndex = GetClassState($currentPlayer, $CS_AbilityIndex);
-  $abilityTypes = GetAbilityTypes($cardID, GetClassState($currentPlayer, $CS_PlayIndex));
+  $abilityIndex = GetClassState($gamestate->currentPlayer, $CS_AbilityIndex);
+  $abilityTypes = GetAbilityTypes($cardID, GetClassState($gamestate->currentPlayer, $CS_PlayIndex));
   if($abilityTypes == "" || $abilityIndex == "-") return GetAbilityType($cardID, -1, $from);
   $abilityTypes = explode(",", $abilityTypes);
   return $abilityTypes[$abilityIndex];
@@ -1042,10 +1042,10 @@ function GetResolvedAbilityType($cardID, $from="-")
 
 function GetResolvedAbilityName($cardID, $from="-")
 {
-  global $currentPlayer, $CS_AbilityIndex, $CS_PlayIndex;
+  global $gamestate, $CS_AbilityIndex, $CS_PlayIndex;
   if($from != "PLAY" && $from != "EQUIP" && $from != "-") return "";
-  $abilityIndex = GetClassState($currentPlayer, $CS_AbilityIndex);
-  $abilityNames = GetAbilityNames($cardID, GetClassState($currentPlayer, $CS_PlayIndex));
+  $abilityIndex = GetClassState($gamestate->currentPlayer, $CS_AbilityIndex);
+  $abilityNames = GetAbilityNames($cardID, GetClassState($gamestate->currentPlayer, $CS_PlayIndex));
   if($abilityNames == "" || $abilityIndex == "-") return "";
   $abilityNames = explode(",", $abilityNames);
   return $abilityNames[$abilityIndex];
@@ -1053,10 +1053,9 @@ function GetResolvedAbilityName($cardID, $from="-")
 
 function IsPlayable($cardID, $phase, $from, $index = -1, &$restriction = null, $player = "")
 {
-  global $currentPlayer, $CS_NumActionsPlayed, $attackState, $CS_NumNonAttackCards, $CS_NumAttackCards;
-  global $mainPlayer, $defPlayer;
-  if($from == "ARS" || $from == "BANISH") return false;
-  if($player == "") $player = $currentPlayer;
+  global $gamestate, $CS_NumActionsPlayed, $CS_NumNonAttackCards, $CS_NumAttackCards;
+  global $defPlayer;
+  if($player == "") $player = $gamestate->currentPlayer;
   if($phase == "P" && $from == "HAND") return true;
   if(IsPlayRestricted($cardID, $restriction, $from, $index, $player)) return false;
   $cardType = CardType($cardID);
@@ -1066,10 +1065,10 @@ function IsPlayable($cardID, $phase, $from, $index = -1, &$restriction = null, $
     if($char[1] != 2) return false;//Can't attack if rested
   }
   $otherPlayer = ($player == 1 ? 2 : 1);
-  if($from == "HAND" && ((CardCost($cardID) + SelfCostModifier($cardID, $from) + CurrentEffectCostModifiers($cardID, $from, reportMode:true) + CharacterCostModifier($cardID, $from)) > NumResourcesAvailable($currentPlayer)) && !HasAlternativeCost($cardID)) return false;
+  if($from == "HAND" && ((CardCost($cardID) + SelfCostModifier($cardID, $from) + CurrentEffectCostModifiers($cardID, $from, reportMode:true) + CharacterCostModifier($cardID, $from)) > NumResourcesAvailable($gamestate->currentPlayer)) && !HasAlternativeCost($cardID)) return false;
   if($from == "RESOURCES") {
     if(!PlayableFromResources($cardID, index:$index)) return false;
-    if((SmuggleCost($cardID, index:$index) + SelfCostModifier($cardID, $from)) > NumResourcesAvailable($currentPlayer) && !HasAlternativeCost($cardID)) return false;
+    if((SmuggleCost($cardID, index:$index) + SelfCostModifier($cardID, $from)) > NumResourcesAvailable($gamestate->currentPlayer) && !HasAlternativeCost($cardID)) return false;
   }
   if(DefinedTypesContains($cardID, "Upgrade", $player) && SearchCount(SearchAllies($player)) == 0 && SearchCount(SearchAllies($otherPlayer)) == 0) return false;
   if($phase == "M" && $from == "HAND") return true;
@@ -1103,9 +1102,9 @@ function HasAlternativeCost($cardID) {
 //Preserve
 function GoesWhereAfterResolving($cardID, $from = null, $player = "", $playedFrom="", $resourcesPaid="", $additionalCosts="")
 {
-  global $currentPlayer, $mainPlayer;
-  if($player == "") $player = $currentPlayer;
-  if(DefinedTypesContains($cardID, "Upgrade", $currentPlayer)) return "ATTACHTARGET";
+  global $gamestate;
+  if($player == "") $player = $gamestate->currentPlayer;
+  if(DefinedTypesContains($cardID, "Upgrade", $gamestate->currentPlayer)) return "ATTACHTARGET";
   if(IsAlly($cardID)) return "ALLY";
   switch($cardID) {
     case "2703877689": return "RESOURCE";//Resupply
@@ -1165,22 +1164,15 @@ function IsPitchRestricted($cardID, &$restriction, $from = "", $index = -1)
 
 function IsPlayRestricted($cardID, &$restriction, $from = "", $index = -1, $player = "")
 {
-  global $currentPlayer, $mainPlayer;
-  if($player == "") $player = $currentPlayer;
-  $otherPlayer = ($currentPlayer == 1 ? 2 : 1);
+  global $gamestate;
+  if($player == "") $player = $gamestate->currentPlayer;
+  $otherPlayer = ($gamestate->currentPlayer == 1 ? 2 : 1);
   switch($cardID) {
     case "0523973552"://I Am Your Father
       $theirAllies = &GetAllies($otherPlayer);
       return count($theirAllies) == 0;
     default: return false;
   }
-}
-
-function IsDefenseReactionPlayable($cardID, $from)
-{
-  global $mainPlayer;
-  if(CurrentEffectPreventsDefenseReaction($from)) return false;
-  return true;
 }
 
 function IsAction($cardID)
@@ -1196,7 +1188,6 @@ function IsStaticType($cardType, $from = "", $cardID = "")
 {
   if($cardType == "C" || $cardType == "E" || $cardType == "W") return true;
   if($from == "PLAY") return true;
-  if($cardID != "" && $from == "BANISH" && AbilityPlayableFromBanish($cardID)) return true;
   return false;
 }
 
@@ -1399,61 +1390,6 @@ function CardHP($cardID) {
   }
 }
 
-function HasBladeBreak($cardID)
-{
-  global $defPlayer;
-  switch($cardID) {
-
-    default: return false;
-  }
-}
-
-function HasBattleworn($cardID)
-{
-  switch($cardID) {
-
-    default: return false;
-  }
-}
-
-function HasTemper($cardID)
-{
-  switch($cardID) {
-
-    default: return false;
-  }
-}
-
-function RequiresDiscard($cardID)
-{
-  switch($cardID) {
-
-    default: return false;
-  }
-}
-
-function ETASteamCounters($cardID)
-{
-  switch ($cardID) {
-
-    default: return 0;
-  }
-}
-
-function AbilityHasGoAgain($cardID)
-{
-  return true;
-}
-
-function DoesEffectGrantDominate($cardID)
-{
-  global $attackState;
-  switch ($cardID) {
-
-    default: return false;
-  }
-}
-
 function CharacterNumUsesPerTurn($cardID)
 {
   switch ($cardID) {
@@ -1471,77 +1407,10 @@ function CharacterDefaultActiveState($cardID)
   }
 }
 
-//Hold priority for triggers (2 = Always hold, 1 = Hold, 0 = Don't Hold)
-function AuraDefaultHoldTriggerState($cardID)
-{
-  switch ($cardID) {
-
-    default: return 2;
-  }
-}
-
-function ItemDefaultHoldTriggerState($cardID)
-{
-  switch($cardID) {
-
-    default: return 2;
-  }
-}
-
-function IsCharacterActive($player, $index)
-{
-  $character = &GetPlayerCharacter($player);
-  return $character[$index + 9] == "1";
-}
-
-function HasReprise($cardID)
-{
-  switch($cardID) {
-
-    default: return false;
-  }
-}
-
-//Is it active AS OF THIS MOMENT?
-function RepriseActive()
-{
-  global $currentPlayer, $mainPlayer;
-  return 0;
-}
-
-function HasCombo($cardID)
-{
-  switch ($cardID) {
-    case "WTR081": case "WTR083": case "WTR084": case "WTR085": case "WTR086": case "WTR087":
-    case "WTR088": case "WTR089": case "WTR090": case "WTR091": case "WTR095": case "WTR096":
-    case "WTR097": case "WTR104": case "WTR105": case "WTR106": case "WTR110": case "WTR111": case "WTR112":
-      return true;
-    case "CRU054": case "CRU055": case "CRU056": case "CRU057": case "CRU058": case "CRU059":
-    case "CRU060": case "CRU061": case "CRU062":
-      return true;
-    case "EVR038": case "EVR040": case "EVR041": case "EVR042": case "EVR043":
-      return true;
-    case "DYN047":
-    case "DYN056": case "DYN057": case "DYN058":
-    case "DYN059": case "DYN060": case "DYN061":
-      return true;
-    case "OUT050":
-    case "OUT051":
-    case "OUT056": case "OUT057": case "OUT058":
-    case "OUT059": case "OUT060": case "OUT061":
-    case "OUT062": case "OUT063": case "OUT064":
-    case "OUT065": case "OUT066": case "OUT067":
-    case "OUT074": case "OUT075": case "OUT076":
-    case "OUT080": case "OUT081": case "OUT082":
-      return true;
-  }
-  return false;
-}
-
 function SmuggleCost($cardID, $player="", $index="")
 {
-  global $currentPlayer;
-  if($player == "") $player = $currentPlayer;
+  global $gamestate;
+  if($player == "") $player = $gamestate->currentPlayer;
   $minCost = -1;
   switch($cardID) {
     case "1982478444": $minCost = 7; break;//Vigilant Pursuit Craft
@@ -1594,57 +1463,12 @@ function SmuggleCost($cardID, $player="", $index="")
   return $minCost;
 }
 
-function PlayableFromBanish($cardID, $mod="")
-{
-  global $currentPlayer, $CS_NumNonAttackCards, $CS_Num6PowBan;
-  $mod = explode("-", $mod)[0];
-  if($mod == "TCL" || $mod == "TT" || $mod == "TTFREE" || $mod == "TCC" || $mod == "NT" || $mod == "INST") return true;
-  switch($cardID) {
-
-    default: return false;
-  }
-}
-
 function PlayableFromResources($cardID, $player="", $index="") {
-  global $currentPlayer;
-  if($player == "") $player = $currentPlayer;
+  global $gamestate;
+  if($player == "") $player = $gamestate->currentPlayer;
   if(SmuggleCost($cardID, $player, $index) > 0) return true;
   switch($cardID) {
     default: return false;
-  }
-}
-
-function AbilityPlayableFromBanish($cardID)
-{
-  global $currentPlayer, $mainPlayer;
-  switch($cardID) {
-    default: return false;
-  }
-}
-
-function RequiresDieRoll($cardID, $from, $player)
-{
-  global $turn;
-  if(GetDieRoll($player) > 0) return false;
-  if($turn[0] == "B") return false;
-  return false;
-}
-
-function IsSpecialization($cardID)
-{
-  switch ($cardID) {
-
-    default:
-      return false;
-  }
-}
-
-function Is1H($cardID)
-{
-  switch ($cardID) {
-
-    default:
-      return false;
   }
 }
 
@@ -1654,29 +1478,6 @@ function CardHasAltArt($cardID)
 
   default:
       return false;
-  }
-}
-
-function IsIyslander($character)
-{
-  switch($character) {
-    default: return false;
-  }
-}
-
-function WardAmount($cardID)
-{
-  switch($cardID)
-  {
-    default: return 0;
-  }
-}
-
-function HasWard($cardID)
-{
-  switch ($cardID) {
-
-    default: return false;
   }
 }
 

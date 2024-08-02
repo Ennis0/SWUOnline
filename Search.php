@@ -18,22 +18,10 @@ function SearchCharacter($player, $type = "", $definedType = "", $maxCost = -1, 
   return SearchInner($character, $player, "CHAR", CharacterPieces(), $type, $definedType, $maxCost, $minCost, $aspect, $arena, $hasBountyOnly, $hasUpgradeOnly, $trait, $damagedOnly, $maxAttack, $maxHealth, $frozenOnly, $hasNegCounters, $hasEnergyCounters, $comboOnly, $minAttack, $keyword);
 }
 
-function SearchPitch($player, $type = "", $definedType = "", $maxCost = -1, $minCost = -1, $aspect = "", $arena = "", $hasBountyOnly = false, $hasUpgradeOnly = false, $trait = -1, $damagedOnly = false, $maxAttack = -1, $maxHealth = -1, $frozenOnly = false, $hasNegCounters = false, $hasEnergyCounters = false, $comboOnly = false, $minAttack = false, $keyword = false)
-{
-  $searchPitch = &GetPitch($player);
-  return SearchInner($searchPitch, $player, "PITCH", PitchPieces(), $type, $definedType, $maxCost, $minCost, $aspect, $arena, $hasBountyOnly, $hasUpgradeOnly, $trait, $damagedOnly, $maxAttack, $maxHealth, $frozenOnly, $hasNegCounters, $hasEnergyCounters, $comboOnly, $minAttack, $keyword);
-}
-
 function SearchDiscard($player, $type = "", $definedType = "", $maxCost = -1, $minCost = -1, $aspect = "", $arena = "", $hasBountyOnly = false, $hasUpgradeOnly = false, $trait = -1, $damagedOnly = false, $maxAttack = -1, $maxHealth = -1, $frozenOnly = false, $hasNegCounters = false, $hasEnergyCounters = false, $comboOnly = false, $minAttack = false, $keyword = false)
 {
   $discard = &GetDiscard($player);
   return SearchInner($discard, $player, "DISCARD", DiscardPieces(), $type, $definedType, $maxCost, $minCost, $aspect, $arena, $hasBountyOnly, $hasUpgradeOnly, $trait, $damagedOnly, $maxAttack, $maxHealth, $frozenOnly, $hasNegCounters, $hasEnergyCounters, $comboOnly, $minAttack, $keyword);
-}
-
-function SearchBanish($player, $type = "", $definedType = "", $maxCost = -1, $minCost = -1, $aspect = "", $arena = "", $hasBountyOnly = false, $hasUpgradeOnly = false, $trait = -1, $damagedOnly = false, $maxAttack = -1, $maxHealth = -1, $frozenOnly = false, $hasNegCounters = false, $hasEnergyCounters = false, $comboOnly = false, $minAttack = false, $keyword = false)
-{
-  $banish = &GetBanish($player);
-  return SearchInner($banish, $player, "BANISH", BanishPieces(), $type, $definedType, $maxCost, $minCost, $aspect, $arena, $hasBountyOnly, $hasUpgradeOnly, $trait, $damagedOnly, $maxAttack, $maxHealth, $frozenOnly, $hasNegCounters, $hasEnergyCounters, $comboOnly, $minAttack, $keyword);
 }
 
 function SearchResources($player, $type = "", $definedType = "", $maxCost = -1, $minCost = -1, $aspect = "", $arena = "", $hasBountyOnly = false, $hasUpgradeOnly = false, $trait = -1, $damagedOnly = false, $maxAttack = -1, $maxHealth = -1, $frozenOnly = false, $hasNegCounters = false, $hasEnergyCounters = false, $comboOnly = false, $minAttack = false, $keyword = false)
@@ -42,42 +30,17 @@ function SearchResources($player, $type = "", $definedType = "", $maxCost = -1, 
   return SearchInner($arsenal, $player, "MEM", MemoryPieces(), $type, $definedType, $maxCost, $minCost, $aspect, $arena, $hasBountyOnly, $hasUpgradeOnly, $trait, $damagedOnly, $maxAttack, $maxHealth, $frozenOnly, $hasNegCounters, $hasEnergyCounters, $comboOnly, $minAttack, $keyword);
 }
 
-function SearchAura($player, $type = "", $definedType = "", $maxCost = -1, $minCost = -1, $aspect = "", $arena = "", $hasBountyOnly = false, $hasUpgradeOnly = false, $trait = -1, $damagedOnly = false, $maxAttack = -1, $maxHealth = -1, $frozenOnly = false, $hasNegCounters = false, $hasEnergyCounters = false, $comboOnly = false, $minAttack = false, $keyword = false)
-{
-  $auras = &GetAuras($player);
-  return SearchInner($auras, $player, "AURAS", AuraPieces(), $type, $definedType, $maxCost, $minCost, $aspect, $arena, $hasBountyOnly, $hasUpgradeOnly, $trait, $damagedOnly, $maxAttack, $maxHealth, $frozenOnly, $hasNegCounters, $hasEnergyCounters, $comboOnly, $minAttack, $keyword);
-}
-
-function SearchItems($player, $type = "", $definedType = "", $maxCost = -1, $minCost = -1, $aspect = "", $arena = "", $hasBountyOnly = false, $hasUpgradeOnly = false, $trait = -1, $damagedOnly = false, $maxAttack = -1, $maxHealth = -1, $frozenOnly = false, $hasNegCounters = false, $hasEnergyCounters = false, $comboOnly = false, $minAttack = false, $keyword = false)
-{
-  $items = &GetItems($player);
-  return SearchInner($items, $player, "ITEMS", ItemPieces(), $type, $definedType, $maxCost, $minCost, $aspect, $arena, $hasBountyOnly, $hasUpgradeOnly, $trait, $damagedOnly, $maxAttack, $maxHealth, $frozenOnly, $hasNegCounters, $hasEnergyCounters, $comboOnly, $minAttack, $keyword);
-}
-
 function SearchAllies($player, $type = "", $definedType = "", $maxCost = -1, $minCost = -1, $aspect = "", $arena = "", $hasBountyOnly = false, $hasUpgradeOnly = false, $trait = -1, $damagedOnly = false, $maxAttack = -1, $maxHealth = -1, $frozenOnly = false, $hasNegCounters = false, $hasEnergyCounters = false, $comboOnly = false, $minAttack = false, $keyword = false)
 {
   $allies = &GetAllies($player);
   return SearchInner($allies, $player, "ALLY", AllyPieces(), $type, $definedType, $maxCost, $minCost, $aspect, $arena, $hasBountyOnly, $hasUpgradeOnly, $trait, $damagedOnly, $maxAttack, $maxHealth, $frozenOnly, $hasNegCounters, $hasEnergyCounters, $comboOnly, $minAttack, $keyword);
 }
 
-function SearchPermanents($player, $type = "", $definedType = "", $maxCost = -1, $minCost = -1, $aspect = "", $arena = "", $hasBountyOnly = false, $hasUpgradeOnly = false, $trait = -1, $damagedOnly = false, $maxAttack = -1, $maxHealth = -1, $frozenOnly = false, $hasNegCounters = false, $hasEnergyCounters = false, $comboOnly = false, $minAttack = false, $keyword = false)
-{
-  $permanents = &GetPermanents($player);
-  return SearchInner($permanents, $player, "PERM", PermanentPieces(), $type, $definedType, $maxCost, $minCost, $aspect, $arena, $hasBountyOnly, $hasUpgradeOnly, $trait, $damagedOnly, $maxAttack, $maxHealth, $frozenOnly, $hasNegCounters, $hasEnergyCounters, $comboOnly, $minAttack, $keyword);
-}
-
 function SearchLayer($player, $type = "", $definedType = "", $maxCost = -1, $minCost = -1, $aspect = "", $arena = "", $hasBountyOnly = false, $hasUpgradeOnly = false, $trait = -1, $damagedOnly = false, $maxAttack = -1, $maxHealth = -1, $frozenOnly = false, $hasNegCounters = false, $hasEnergyCounters = false, $comboOnly = false, $minAttack = false, $keyword = false)
 {
-  global $layers;
-  return SearchInner($layers, $player, "LAYER", LayerPieces(), $type, $definedType, $maxCost, $minCost, $aspect, $arena, $hasBountyOnly, $hasUpgradeOnly, $trait, $damagedOnly, $maxAttack, $maxHealth, $frozenOnly, $hasNegCounters, $hasEnergyCounters, $comboOnly, $minAttack, $keyword);
+  global $gamestate;
+  return SearchInner($gamestate->layers, $player, "LAYER", LayerPieces(), $type, $definedType, $maxCost, $minCost, $aspect, $arena, $hasBountyOnly, $hasUpgradeOnly, $trait, $damagedOnly, $maxAttack, $maxHealth, $frozenOnly, $hasNegCounters, $hasEnergyCounters, $comboOnly, $minAttack, $keyword);
 }
-
-function SearchMaterial($player, $type = "", $definedType = "", $maxCost = -1, $minCost = -1, $aspect = "", $arena = "", $hasBountyOnly = false, $hasUpgradeOnly = false, $trait = -1, $damagedOnly = false, $maxAttack = -1, $maxHealth = -1, $frozenOnly = false, $hasNegCounters = false, $hasEnergyCounters = false, $comboOnly = false, $minAttack = false, $keyword = false)
-{
-  $material = &GetMaterial($player);
-  return SearchInner($material, $player, "MATERIAL", MaterialPieces(), $type, $definedType, $maxCost, $minCost, $aspect, $arena, $hasBountyOnly, $hasUpgradeOnly, $trait, $damagedOnly, $maxAttack, $maxHealth, $frozenOnly, $hasNegCounters, $hasEnergyCounters, $comboOnly, $minAttack, $keyword);
-}
-
 
 function SearchInner(&$array, $player, $zone, $count, $type, $definedType, $maxCost, $minCost, $aspect, $arena, $hasBountyOnly, $hasUpgradeOnly, $trait, $damagedOnly, $maxAttack, $maxHealth, $frozenOnly, $hasNegCounters, $hasEnergyCounters, $comboOnly, $minAttack, $keyword)
 {
@@ -353,9 +316,9 @@ function SearchMultizoneFormat($search, $zone)
 
 function SearchCurrentTurnEffects($cardID, $player, $remove = false)
 {
-  global $currentTurnEffects;
-  for ($i = 0; $i < count($currentTurnEffects); $i += CurrentTurnEffectPieces()) {
-    if ($currentTurnEffects[$i] == $cardID && $currentTurnEffects[$i + 1] == $player) {
+  global $gamestate;
+  for ($i = 0; $i < count($gamestate->currentTurnEffects); $i += CurrentTurnEffectPieces()) {
+    if ($gamestate->currentTurnEffects[$i] == $cardID && $gamestate->currentTurnEffects[$i + 1] == $player) {
       if ($remove) RemoveCurrentTurnEffect($i);
       return true;
     }
@@ -365,10 +328,10 @@ function SearchCurrentTurnEffects($cardID, $player, $remove = false)
 
 function SearchLimitedCurrentTurnEffects($cardID, $player, $remove = false)
 {
-  global $currentTurnEffects;
-  for ($i = 0; $i < count($currentTurnEffects); $i += CurrentTurnEffectPieces()) {
-    if ($currentTurnEffects[$i] == $cardID && $currentTurnEffects[$i + 1] == $player) {
-      $uniqueID = $currentTurnEffects[$i + 2];
+  global $gamestate;
+  for ($i = 0; $i < count($gamestate->currentTurnEffects); $i += CurrentTurnEffectPieces()) {
+    if ($gamestate->currentTurnEffects[$i] == $cardID && $gamestate->currentTurnEffects[$i + 1] == $player) {
+      $uniqueID = $gamestate->currentTurnEffects[$i + 2];
       if ($remove) RemoveCurrentTurnEffect($i);
       return $uniqueID;
     }
@@ -378,21 +341,21 @@ function SearchLimitedCurrentTurnEffects($cardID, $player, $remove = false)
 
 function SearchCurrentTurnEffectsForCycle($card1, $card2, $card3, $player)
 {
-  global $currentTurnEffects;
-  for ($i = 0; $i < count($currentTurnEffects); $i += CurrentTurnEffectPieces()) {
-    if ($currentTurnEffects[$i] == $card1 && $currentTurnEffects[$i + 1] == $player) return true;
-    if ($currentTurnEffects[$i] == $card2 && $currentTurnEffects[$i + 1] == $player) return true;
-    if ($currentTurnEffects[$i] == $card3 && $currentTurnEffects[$i + 1] == $player) return true;
+  global $gamestate;
+  for ($i = 0; $i < count($gamestate->currentTurnEffects); $i += CurrentTurnEffectPieces()) {
+    if ($gamestate->currentTurnEffects[$i] == $card1 && $gamestate->currentTurnEffects[$i + 1] == $player) return true;
+    if ($gamestate->currentTurnEffects[$i] == $card2 && $gamestate->currentTurnEffects[$i + 1] == $player) return true;
+    if ($gamestate->currentTurnEffects[$i] == $card3 && $gamestate->currentTurnEffects[$i + 1] == $player) return true;
   }
   return false;
 }
 
 function CountCurrentTurnEffects($cardID, $player, $remove = false)
 {
-  global $currentTurnEffects;
+  global $gamestate;
   $count = 0;
-  for ($i = 0; $i < count($currentTurnEffects); $i += CurrentTurnEffectPieces()) {
-    if ($currentTurnEffects[$i] == $cardID && $currentTurnEffects[$i + 1] == $player) {
+  for ($i = 0; $i < count($gamestate->currentTurnEffects); $i += CurrentTurnEffectPieces()) {
+    if ($gamestate->currentTurnEffects[$i] == $cardID && $gamestate->currentTurnEffects[$i + 1] == $player) {
       if ($remove) RemoveCurrentTurnEffect($i);
       ++$count;
     }
@@ -400,142 +363,11 @@ function CountCurrentTurnEffects($cardID, $player, $remove = false)
   return $count;
 }
 
-function SearchPitchHighestAttack(&$pitch)
-{
-  $highest = 0;
-  for ($i = 0; $i < count($pitch); ++$i) {
-    $av = AttackValue($pitch[$i]);
-    if ($av > $highest) $highest = $av;
-  }
-  return $highest;
-}
-
-function SearchPitchForColor($player, $color)
-{
-  $count = 0;
-  $pitch = &GetPitch($player);
-  for ($i = 0; $i < count($pitch); $i += PitchPieces()) {
-    if (PitchValue($pitch[$i]) == $color) ++$count;
-  }
-  return $count;
-}
-
-//For e.g. Mutated Mass
-function SearchPitchForNumCosts($player)
-{
-  $count = 0;
-  $countArr = [];
-  $pitch = &GetPitch($player);
-  for ($i = 0; $i < count($pitch); $i += PitchPieces()) {
-    $cost = CardCost($pitch[$i]);
-    while (count($countArr) <= $cost) $countArr[] = 0;
-    if ($countArr[$cost] == 0) ++$count;
-    ++$countArr[$cost];
-  }
-  return $count;
-}
-
-function SearchPitchForCard($playerID, $cardID)
-{
-  $pitch = GetPitch($playerID);
-  for ($i = 0; $i < count($pitch); ++$i) {
-    if ($pitch[$i] == $cardID) return $i;
-  }
-  return -1;
-}
-
-function SearchBanishForCard($playerID, $cardID)
-{
-  $banish = GetBanish($playerID);
-  for ($i = 0; $i < count($banish); $i+=BanishPieces()) {
-    if ($banish[$i] == $cardID) return $i;
-  }
-  return -1;
-}
-
-function SearchBanishForCardMulti($playerID, $card1, $card2="", $card3="")
-{
-  $cardList = "";
-  $banish = GetBanish($playerID);
-  for ($i = 0; $i < count($banish); ++$i) {
-    if ($banish[$i] == $card1 || $banish[$i] == $card2 || $banish[$i] == $card3)
-    {
-      if($cardList != "") $cardList .= ",";
-      $cardList .= $i;
-    }
-  }
-  return $cardList;
-}
-
-function SearchItemsForCardMulti($playerID, $card1, $card2 = "", $card3 = "")
-{
-  $cardList = "";
-  $items = GetItems($playerID);
-  for ($i = 0; $i < count($items); ++$i) {
-    if ($items[$i] == $card1 || $items[$i] == $card2 || $items[$i] == $card3) {
-      if ($cardList != "") $cardList .= ",";
-      $cardList .= $i;
-    }
-  }
-  return $cardList;
-}
-
-function GetArsenalFaceDownIndices($player)
-{
-  $arsenal = &GetArsenal($player);
-  $indices = "";
-  for ($i = 0; $i < count($arsenal); $i += ArsenalPieces()) {
-    if ($arsenal[$i + 1] == "DOWN") {
-      if ($indices != "") $indices .= ",";
-      $indices .= $i;
-    }
-  }
-  return $indices;
-}
-
-function GetArsenalFaceUpIndices($player)
-{
-  $arsenal = &GetArsenal($player);
-  $indices = "";
-  for ($i = 0; $i < count($arsenal); $i += ArsenalPieces()) {
-    if ($arsenal[$i + 1] == "UP") {
-      if ($indices != "") $indices .= ",";
-      $indices .= $i;
-    }
-  }
-  return $indices;
-}
-
-function SearchAuras($cardID, $player)
-{
-  $auras = &GetAuras($player);
-  $count = 0;
-  for ($i = 0; $i < count($auras); $i += AuraPieces()) {
-    if ($auras[$i] == $cardID) return true;
-  }
-  return false;
-}
-
-function SearchAurasForCard($cardID, $player, $justFirst=false)
-{
-  $auras = &GetAuras($player);
-  $indices = "";
-  for ($i = 0; $i < count($auras); $i += AuraPieces()) {
-    if ($auras[$i] == $cardID) {
-      if($justFirst) return $i;
-      if ($indices != "") $indices .= ",";
-      $indices .= $i;
-    }
-  }
-  return $indices;
-}
-
 function SearchZoneForUniqueID($uniqueID, $player, $zone)
 {
   switch($zone)
   {
     case "MYALLY": case "THEIRALLY": return SearchAlliesForUniqueID($uniqueID, $player);
-    case "MYAURAS": case "THEIRAURAS": return SearchAurasForUniqueID($uniqueID, $player);
     default: return -1;
   }
 }
@@ -560,10 +392,10 @@ function SearchForUniqueID($uniqueID, $player)
 
 function SearchLayersForUniqueID($uniqueID)
 {
-  global $layers;
-  for($i=0; $i<count($layers); $i+=LayerPieces())
+  global $gamestate;
+  for($i=0; $i<count($gamestate->layers); $i+=LayerPieces())
   {
-    if($layers[$i+6] == $uniqueID) return $i;
+    if($gamestate->layers[$i+6] == $uniqueID) return $i;
   }
   return -1;
 }
@@ -604,18 +436,18 @@ function SearchAlliesForUniqueID($uniqueID, $player)
 
 function SearchCurrentTurnEffectsForUniqueID($uniqueID)
 {
-  global $currentTurnEffects;
-  for ($i = 0; $i < count($currentTurnEffects); $i += CurrentTurnEffectPieces()) {
-    if ($currentTurnEffects[$i + 2] == $uniqueID) return $i;
+  global $gamestate;
+  for ($i = 0; $i < count($gamestate->currentTurnEffects); $i += CurrentTurnEffectPieces()) {
+    if ($gamestate->currentTurnEffects[$i + 2] == $uniqueID) return $i;
   }
   return -1;
 }
 
 function SearchUniqueIDForCurrentTurnEffects($index)
 {
-  global $currentTurnEffects;
-  for ($i = 0; $i < count($currentTurnEffects); $i += CurrentTurnEffectPieces()) {
-    if ($currentTurnEffects[$i+2] == $index) return $currentTurnEffects[$i];
+  global $gamestate;
+  for ($i = 0; $i < count($gamestate->currentTurnEffects); $i += CurrentTurnEffectPieces()) {
+    if ($gamestate->currentTurnEffects[$i+2] == $index) return $gamestate->currentTurnEffects[$i];
   }
   return -1;
 }
@@ -703,7 +535,7 @@ function GetMZCardLink($player, $MZ)
 //Each search is the format <zone>:<condition 1>;<condition 2>,...
 //Each condition is format <search parameter name>=<parameter value>
 //cardID=, sameName=, and sameTitle= cannot be combined with other conditions, except maxCount=.
-//Example: AddDecisionQueue("MULTIZONEINDICES", $currentPlayer, "MYHAND:maxAttack=3;type=AA");
+//Example: AddDecisionQueue("MULTIZONEINDICES", $gamestate->currentPlayer, "MYHAND:maxAttack=3;type=AA");
 function SearchMultizone($player, $searches)
 {
   $unionSearches = explode("&", $searches);
@@ -827,19 +659,6 @@ function SearchMultizone($player, $searches)
                 else if(count($cards) == 3) $searchResult = SearchDiscardForCard($player, $cards[0], $cards[1], $cards[2]);
                 else WriteLog("Discard multizone search only supports 3 cards -- report bug.");
                 break;
-              case "MYBANISH":
-                if(count($cards) == 1) $searchResult = SearchBanishForCardMulti($player, $cards[0]);
-                else if(count($cards) == 2) $searchResult = SearchBanishForCardMulti($player, $cards[0], $cards[1]);
-                else if(count($cards) == 3) $searchResult = SearchBanishForCardMulti($player, $cards[0], $cards[1], $cards[2]);
-                else WriteLog("Banish multizone search only supports 3 cards -- report bug.");
-                break;
-              case "MYITEMS":
-                if (count($cards) == 1) $searchResult = SearchItemsForCardMulti($player, $cards[0]);
-                else if (count($cards) == 2) $searchResult = SearchItemsForCardMulti($player, $cards[0], $cards[1]);
-                else if (count($cards) == 3) $searchResult = SearchItemsForCardMulti($player, $cards[0], $cards[1], $cards[2]);
-                else WriteLog("Item multizone search only supports 3 cards -- report bug.");
-                break;
-              default: break;
             }
             $isCardID = true;
             break;
@@ -879,29 +698,11 @@ function SearchMultizone($player, $searches)
         case "MYDISCARD": case "THEIRDISCARD":
           $searchResult = SearchDiscard($searchPlayer, $type, $definedType, $maxCost, $minCost, $aspect, $arena, $hasBountyOnly, $hasUpgradeOnly, $trait, $damagedOnly, $maxAttack, $maxHealth, $frozenOnly, $hasNegCounters, $hasEnergyCounters, $comboOnly, $minAttack, $keyword);
           break;
-        case "MYAURAS": case "THEIRAURAS":
-          $searchResult = SearchAura($searchPlayer, $type, $definedType, $maxCost, $minCost, $aspect, $arena, $hasBountyOnly, $hasUpgradeOnly, $trait, $damagedOnly, $maxAttack, $maxHealth, $frozenOnly, $hasNegCounters, $hasEnergyCounters, $comboOnly, $minAttack, $keyword);
-          break;
         case "MYCHAR": case "THEIRCHAR":
           $searchResult = SearchCharacter($searchPlayer, $type, $definedType, $maxCost, $minCost, $aspect, $arena, $hasBountyOnly, $hasUpgradeOnly, $trait, $damagedOnly, $maxAttack, $maxHealth, $frozenOnly, $hasNegCounters, $hasEnergyCounters, $comboOnly, $minAttack, $keyword);
           break;
-        case "MYITEMS": case "THEIRITEMS":
-          $searchResult = SearchItems($searchPlayer, $type, $definedType, $maxCost, $minCost, $aspect, $arena, $hasBountyOnly, $hasUpgradeOnly, $trait, $damagedOnly, $maxAttack, $maxHealth, $frozenOnly, $hasNegCounters, $hasEnergyCounters, $comboOnly, $minAttack, $keyword);
-          break;
         case "MYALLY": case "THEIRALLY":
           $searchResult = SearchAllies($searchPlayer, $type, $definedType, $maxCost, $minCost, $aspect, $arena, $hasBountyOnly, $hasUpgradeOnly, $trait, $damagedOnly, $maxAttack, $maxHealth, $frozenOnly, $hasNegCounters, $hasEnergyCounters, $comboOnly, $minAttack, $keyword);
-          break;
-        case "MYPERM": case "THEIRPERM":
-          $searchResult = SearchPermanents($searchPlayer, $type, $definedType, $maxCost, $minCost, $aspect, $arena, $hasBountyOnly, $hasUpgradeOnly, $trait, $damagedOnly, $maxAttack, $maxHealth, $frozenOnly, $hasNegCounters, $hasEnergyCounters, $comboOnly, $minAttack, $keyword);
-          break;
-        case "MYBANISH": case "THEIRBANISH":
-          $searchResult = SearchBanish($searchPlayer, $type, $definedType, $maxCost, $minCost, $aspect, $arena, $hasBountyOnly, $hasUpgradeOnly, $trait, $damagedOnly, $maxAttack, $maxHealth, $frozenOnly, $hasNegCounters, $hasEnergyCounters, $comboOnly, $minAttack, $keyword);
-          break;
-        case "MYPITCH": case "THEIRPITCH":
-          $searchResult = SearchPitch($searchPlayer, $type, $definedType, $maxCost, $minCost, $aspect, $arena, $hasBountyOnly, $hasUpgradeOnly, $trait, $damagedOnly, $maxAttack, $maxHealth, $frozenOnly, $hasNegCounters, $hasEnergyCounters, $comboOnly, $minAttack, $keyword);
-          break;
-        case "MYMATERIAL": case "THEIRMATERIAL":
-          $searchResult = SearchMaterial($searchPlayer, $type, $definedType, $maxCost, $minCost, $aspect, $arena, $hasBountyOnly, $hasUpgradeOnly, $trait, $damagedOnly, $maxAttack, $maxHealth, $frozenOnly, $hasNegCounters, $hasEnergyCounters, $comboOnly, $minAttack, $keyword);
           break;
         case "MYRESOURCES": case "THEIRRESOURCES":
           $searchResult = SearchResources($searchPlayer, $type, $definedType, $maxCost, $minCost, $aspect, $arena, $hasBountyOnly, $hasUpgradeOnly, $trait, $damagedOnly, $maxAttack, $maxHealth, $frozenOnly, $hasNegCounters, $hasEnergyCounters, $comboOnly, $minAttack, $keyword);

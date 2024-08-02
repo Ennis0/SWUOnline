@@ -11,9 +11,6 @@ include "Libraries/StatFunctions.php";
 include "Libraries/UILibraries.php";
 include "Libraries/PlayerSettings.php";
 include "Libraries/NetworkingLibraries.php";
-include "AI/CombatDummy.php";
-include "AI/EncounterAI.php";
-include "AI/PlayerMacros.php";
 include "Libraries/HTTPLibraries.php";
 require_once("Libraries/CoreLibraries.php");
 include_once "./includes/dbh.inc.php";
@@ -41,14 +38,14 @@ $submission = json_decode($submission); //I don't know why it's not correctly pa
 //First we need to parse the game state from the file
 include "ParseGamestate.php";
 
-$otherPlayer = $currentPlayer == 1 ? 2 : 1;
+$otherPlayer = $gamestate->currentPlayer == 1 ? 2 : 1;
 $skipWriteGamestate = false;
 $mainPlayerGamestateStillBuilt = 0;
 $makeCheckpoint = 0;
 $makeBlockBackup = 0;
 $MakeStartTurnBackup = false;
 $MakeStartGameBackup = false;
-$targetAuth = ($playerID == 1 ? $p1Key : $p2Key);
+$targetAuth = ($playerID == 1 ? $gamestate->p1Key : $gamestate->p2Key);
 $conceded = false;
 $randomSeeded = false;
 
@@ -58,7 +55,7 @@ if (!IsReplay()) {
   }
   if ($playerID != 3 && $authKey != $targetAuth) exit;
   if ($playerID == 3 && !IsModeAllowedForSpectators($mode)) ExitProcessInput();
-  if (!IsModeAsync($mode) && $currentPlayer != $playerID) {
+  if (!IsModeAsync($mode) && $gamestate->currentPlayer != $playerID) {
     $currentTime = round(microtime(true) * 1000);
     SetCachePiece($gameName, 2, $currentTime);
     SetCachePiece($gameName, 3, $currentTime);
@@ -69,7 +66,7 @@ if (!IsReplay()) {
 $afterResolveEffects = [];
 
 $animations = [];
-$events = []; //Clear events each time so it's only updated ones that get sent
+$gamestate->events = []; //Clear events each time so it's only updated ones that get sent
 
 $isSimulation = false;
 $response = new stdClass();
@@ -95,7 +92,7 @@ switch ($mode) {
   case 33: //Fully re-order layers
     //First validate
     $isValid = true;
-    if (count($submission->layers) < $dqState[8] / LayerPieces()) {
+    if (count($submission->layers) < $gamestate->dqState[8] / LayerPieces()) {
       $response->error = "Not enough layers.";
       $isValid = false;
       break;
@@ -107,7 +104,7 @@ switch ($mode) {
         $isValid = false;
         break;
       }
-      if ($layerID < 0 || $layerID > $dqState[8]) {
+      if ($layerID < 0 || $layerID > $gamestate->dqState[8]) {
         $response->error = "Layer ID out of range.";
         $isValid = false;
         break;
@@ -124,13 +121,13 @@ switch ($mode) {
     $newLayers = [];
     for ($i = 0; $i < count($submission->layers); ++$i) {
       for ($j = $submission->layers[$i]; $j < $submission->layers[$i] + LayerPieces(); ++$j) {
-        $newLayers[] = $layers[$j];
+        $newLayers[] = $gamestate->layers[$j];
       }
     }
-    for ($i = $dqState[8] + LayerPieces(); $i < $dqState[8] + LayerPieces() * 2; ++$i) {
-      $newLayers[] = $layers[$i];
+    for ($i = $gamestate->dqState[8] + LayerPieces(); $i < $gamestate->dqState[8] + LayerPieces() * 2; ++$i) {
+      $newLayers[] = $gamestate->layers[$i];
     }
-    $layers = $newLayers;
+    $gamestate->layers = $newLayers;
     break;
   case 100011: //Resume adventure (roguelike)
     if ($roguelikeGameID == "") {
@@ -146,7 +143,7 @@ switch ($mode) {
 echo (json_encode($response));
 
 ProcessMacros();
-if ($inGameStatus == $GameStatus_Rematch) {
+if ($gamestate->inGameStatus == $GameStatus_Rematch) {
   $origDeck = "./Games/" . $gameName . "/p1DeckOrig.txt";
   if (file_exists($origDeck)) copy($origDeck, "./Games/" . $gameName . "/p1Deck.txt");
   $origDeck = "./Games/" . $gameName . "/p2DeckOrig.txt";
@@ -155,32 +152,32 @@ if ($inGameStatus == $GameStatus_Rematch) {
   include "MenuFiles/WriteGamefile.php";
   $gameStatus = (IsPlayerAI(2) ? $MGS_ReadyToStart : $MGS_ChooseFirstPlayer);
   SetCachePiece($gameName, 14, $gameStatus);
-  $firstPlayer = 1;
-  $firstPlayerChooser = ($winner == 1 ? 2 : 1);
+  $gamestate->firstPlayer = 1;
+  $firstPlayerChooser = ($gamestate->winner == 1 ? 2 : 1);
   $p1SideboardSubmitted = "0";
   $p2SideboardSubmitted = (IsPlayerAI(2) ? "1" : "0");
   WriteLog("Player $firstPlayerChooser lost and will choose first player for the rematch.");
   WriteGameFile();
-  $turn[0] = "REMATCH";
+  $gamestate->turn[0] = "REMATCH";
   include "WriteGamestate.php";
   $currentTime = round(microtime(true) * 1000);
   SetCachePiece($gameName, 2, $currentTime);
   SetCachePiece($gameName, 3, $currentTime);
   GamestateUpdated($gameName);
   exit;
-} else if ($winner != 0 && $turn[0] != "YESNO") {
-  $inGameStatus = $GameStatus_Over;
-  $turn[0] = "OVER";
-  $currentPlayer = 1;
+} else if ($gamestate->winner != 0 && $gamestate->turn[0] != "YESNO") {
+  $gamestate->inGameStatus = $GameStatus_Over;
+  $gamestate->turn[0] = "OVER";
+  $gamestate->currentPlayer = 1;
 }
 
 CombatDummyAI(); //Only does anything if applicable
 EncounterAI();
 
 if (!IsGameOver()) {
-  if ($playerID == 1) $p1TotalTime += time() - intval($lastUpdateTime);
-  else if ($playerID == 2) $p2TotalTime += time() - intval($lastUpdateTime);
-  $lastUpdateTime = time();
+  if ($playerID == 1) $gamestate->p1TotalTime += time() - intval($gamestate->lastUpdateTime);
+  else if ($playerID == 2) $gamestate->p1TotalTime += time() - intval($gamestate->lastUpdateTime);
+  $gamestate->lastUpdateTime = time();
 }
 
 //Now write out the game state
@@ -188,7 +185,7 @@ if (!$skipWriteGamestate) {
   if (!IsModeAsync($mode)) {
     if (GetCachePiece($gameName, 12) == "1") WriteLog("Current player is active again.");
     SetCachePiece($gameName, 12, "0");
-    $currentPlayerActivity = 0;
+    $gamestate->currentPlayerActivity = 0;
   }
   DoGamestateUpdate();
   include "WriteGamestate.php";

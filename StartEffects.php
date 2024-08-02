@@ -3,9 +3,9 @@
 //include "ParseGamestate.php";
 //include "WriteLog.php";
 
-$mainPlayer = $firstPlayer;
-$currentPlayer = $firstPlayer;
-$otherPlayer = ($currentPlayer == 1 ? 2 : 1);
+$gamestate->mainPlayer = $gamestate->firstPlayer;
+$gamestate->currentPlayer = $gamestate->firstPlayer;
+$otherPlayer = ($gamestate->currentPlayer == 1 ? 2 : 1);
 StatsStartTurn();
 
 $MakeStartTurnBackup = false;
@@ -32,12 +32,12 @@ if($p2CharEquip[0] == "DUMMY") {
 */
 
 //Start of game effects go here
-$initiativePlayer = $firstPlayer;
-$intiativeTaken = 0;
+$gamestate->initiativePlayer = $gamestate->firstPlayer;
+$gamestate->initiativeTaken = 0;
 
 AddDecisionQueue("SHUFFLEDECK", 1, "SKIPSEED");
 AddDecisionQueue("SHUFFLEDECK", 2, "SKIPSEED");
-AddDecisionQueue("STARTGAME", $initiativePlayer, "-");
+AddDecisionQueue("STARTGAME", $gamestate->initiativePlayer, "-");
 
 ProcessDecisionQueue();
 

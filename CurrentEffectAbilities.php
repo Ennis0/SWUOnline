@@ -4,25 +4,25 @@
 //Return 1 if the effect should be removed
 function EffectHitEffect($cardID)
 {
-  global $attackState, $defPlayer, $mainPlayer, $AS_AttackerIndex, $AS_DamageDealt;
+  global $gamestate, $defPlayer, $AS_AttackerIndex, $AS_DamageDealt;
   switch($cardID) {
     case "6954704048"://Heroic Sacrifice
-      $ally = new Ally(AttackerMZID($mainPlayer), $mainPlayer);
+      $ally = new Ally(AttackerMZID($gamestate->mainPlayer), $gamestate->mainPlayer);
       WriteLog("Heroic Sacrifice defeated " . CardLink($ally->CardID(), $ally->CardID()));
       $ally->Destroy();
       break;
     case "8988732248-1"://Rebel Assault
-      AddCurrentTurnEffect("8988732248-2", $mainPlayer);
+      AddCurrentTurnEffect("8988732248-2", $gamestate->mainPlayer);
       break;
     case "0802973415"://Outflank
-      AddCurrentTurnEffect("0802973415-1", $mainPlayer);
+      AddCurrentTurnEffect("0802973415-1", $gamestate->mainPlayer);
       break;
     case "5896817672-1"://Headhunting
     case "5896817672-2":
-      AddCurrentTurnEffect("5896817672" . (substr($cardID, -2, 2) == "-1" ? "-2" : "-3"), $mainPlayer);
+      AddCurrentTurnEffect("5896817672" . (substr($cardID, -2, 2) == "-1" ? "-2" : "-3"), $gamestate->mainPlayer);
       break;
     case "6514927936-1"://Leia Organa
-      AddCurrentTurnEffectFromCombat("6514927936-2", $mainPlayer);
+      AddCurrentTurnEffectFromCombat("6514927936-2", $gamestate->mainPlayer);
       break;
     default:
       break;
@@ -33,74 +33,74 @@ function EffectHitEffect($cardID)
 //Return true if there's a chained action
 function FinalizeAttackEffects()
 {
-  global $mainPlayer, $currentTurnEffects;
-  for($i=0; $i<count($currentTurnEffects); $i+=CurrentTurnPieces()) {
-    switch($currentTurnEffects[$i]) {
+  global $gamestate;
+  for($i=0; $i<count($gamestate->currentTurnEffects); $i+=CurrentTurnPieces()) {
+    switch($gamestate->currentTurnEffects[$i]) {
       case "8988732248-2"://Rebel Assault
-        PrependDecisionQueue("REMOVECURRENTEFFECT", $mainPlayer, $currentTurnEffects[$i]);
-        PrependDecisionQueue("SWAPTURN", $mainPlayer, "-");
-        PrependDecisionQueue("ELSE", $mainPlayer, "-");
-        PrependDecisionQueue("MZOP", $mainPlayer, "ATTACK", 1);
-        PrependDecisionQueue("CHOOSEMULTIZONE", $mainPlayer, "<-", 1);
-        PrependDecisionQueue("SETDQCONTEXT", $mainPlayer, "Choose a unit to attack with");
-        PrependDecisionQueue("MZFILTER", $mainPlayer, "status=1");
-        PrependDecisionQueue("MULTIZONEINDICES", $mainPlayer, "MYALLY:trait=Rebel");
+        PrependDecisionQueue("REMOVECURRENTEFFECT", $gamestate->mainPlayer, $gamestate->currentTurnEffects[$i]);
+        PrependDecisionQueue("SWAPTURN", $gamestate->mainPlayer, "-");
+        PrependDecisionQueue("ELSE", $gamestate->mainPlayer, "-");
+        PrependDecisionQueue("MZOP", $gamestate->mainPlayer, "ATTACK", 1);
+        PrependDecisionQueue("CHOOSEMULTIZONE", $gamestate->mainPlayer, "<-", 1);
+        PrependDecisionQueue("SETDQCONTEXT", $gamestate->mainPlayer, "Choose a unit to attack with");
+        PrependDecisionQueue("MZFILTER", $gamestate->mainPlayer, "status=1");
+        PrependDecisionQueue("MULTIZONEINDICES", $gamestate->mainPlayer, "MYALLY:trait=Rebel");
         return true;
       case "0802973415-1"://Outflank
-        PrependDecisionQueue("REMOVECURRENTEFFECT", $mainPlayer, $currentTurnEffects[$i]);
-        PrependDecisionQueue("SWAPTURN", $mainPlayer, "-");
-        PrependDecisionQueue("ELSE", $mainPlayer, "-");
-        PrependDecisionQueue("MZOP", $mainPlayer, "ATTACK", 1);
-        PrependDecisionQueue("CHOOSEMULTIZONE", $mainPlayer, "<-", 1);
-        PrependDecisionQueue("SETDQCONTEXT", $mainPlayer, "Choose a unit to attack with");
-        PrependDecisionQueue("MZFILTER", $mainPlayer, "status=1");
-        PrependDecisionQueue("MULTIZONEINDICES", $mainPlayer, "MYALLY");
+        PrependDecisionQueue("REMOVECURRENTEFFECT", $gamestate->mainPlayer, $gamestate->currentTurnEffects[$i]);
+        PrependDecisionQueue("SWAPTURN", $gamestate->mainPlayer, "-");
+        PrependDecisionQueue("ELSE", $gamestate->mainPlayer, "-");
+        PrependDecisionQueue("MZOP", $gamestate->mainPlayer, "ATTACK", 1);
+        PrependDecisionQueue("CHOOSEMULTIZONE", $gamestate->mainPlayer, "<-", 1);
+        PrependDecisionQueue("SETDQCONTEXT", $gamestate->mainPlayer, "Choose a unit to attack with");
+        PrependDecisionQueue("MZFILTER", $gamestate->mainPlayer, "status=1");
+        PrependDecisionQueue("MULTIZONEINDICES", $gamestate->mainPlayer, "MYALLY");
         return true;
       case "5896817672-2"://Headhunting
       case "5896817672-3":
         global $AS_CantAttackBase;
-        PrependDecisionQueue("REMOVECURRENTEFFECT", $mainPlayer, $currentTurnEffects[$i]);
-        PrependDecisionQueue("MZOP", $mainPlayer, "ATTACK", 1);
-        PrependDecisionQueue("PASSPARAMETER", $mainPlayer, "{0}");
-        PrependDecisionQueue("ADDLIMITEDCURRENTEFFECT", $mainPlayer, "5896817672", 1);
-        PrependDecisionQueue("MZOP", $mainPlayer, "GETUNIQUEID", 1);
-        PrependDecisionQueue("MZALLCARDTRAITORPASS", $mainPlayer, "Bounty Hunter", 1);
-        PrependDecisionQueue("PASSPARAMETER", $mainPlayer, "{0}", 1);
-        PrependDecisionQueue("SETATTACKSTATE", $mainPlayer, $AS_CantAttackBase, 1);
-        PrependDecisionQueue("PASSPARAMETER", $mainPlayer, 1, 1);
-        PrependDecisionQueue("SETDQVAR", $mainPlayer, "0");
-        PrependDecisionQueue("MAYCHOOSEMULTIZONE", $mainPlayer, "<-", 1);
-        PrependDecisionQueue("SETDQCONTEXT", $mainPlayer, "Choose a unit to attack with");
-        PrependDecisionQueue("MZFILTER", $mainPlayer, "status=1");
-        PrependDecisionQueue("MULTIZONEINDICES", $mainPlayer, "MYALLY");
+        PrependDecisionQueue("REMOVECURRENTEFFECT", $gamestate->mainPlayer, $gamestate->currentTurnEffects[$i]);
+        PrependDecisionQueue("MZOP", $gamestate->mainPlayer, "ATTACK", 1);
+        PrependDecisionQueue("PASSPARAMETER", $gamestate->mainPlayer, "{0}");
+        PrependDecisionQueue("ADDLIMITEDCURRENTEFFECT", $gamestate->mainPlayer, "5896817672", 1);
+        PrependDecisionQueue("MZOP", $gamestate->mainPlayer, "GETUNIQUEID", 1);
+        PrependDecisionQueue("MZALLCARDTRAITORPASS", $gamestate->mainPlayer, "Bounty Hunter", 1);
+        PrependDecisionQueue("PASSPARAMETER", $gamestate->mainPlayer, "{0}", 1);
+        PrependDecisionQueue("SETATTACKSTATE", $gamestate->mainPlayer, $AS_CantAttackBase, 1);
+        PrependDecisionQueue("PASSPARAMETER", $gamestate->mainPlayer, 1, 1);
+        PrependDecisionQueue("SETDQVAR", $gamestate->mainPlayer, "0");
+        PrependDecisionQueue("MAYCHOOSEMULTIZONE", $gamestate->mainPlayer, "<-", 1);
+        PrependDecisionQueue("SETDQCONTEXT", $gamestate->mainPlayer, "Choose a unit to attack with");
+        PrependDecisionQueue("MZFILTER", $gamestate->mainPlayer, "status=1");
+        PrependDecisionQueue("MULTIZONEINDICES", $gamestate->mainPlayer, "MYALLY");
         return true;
       case "6514927936-2"://Leia Organa
-        PrependDecisionQueue("SWAPTURN", $mainPlayer, "-");
-        PrependDecisionQueue("ELSE", $mainPlayer, "-");
-        PrependDecisionQueue("MZOP", $mainPlayer, "ATTACK", 1);
-        PrependDecisionQueue("MAYCHOOSEMULTIZONE", $mainPlayer, "<-", 1);
-        PrependDecisionQueue("SETDQCONTEXT", $mainPlayer, "Choose a unit to attack with");
-        PrependDecisionQueue("MZFILTER", $mainPlayer, "status=1");
-        PrependDecisionQueue("MULTIZONEINDICES", $mainPlayer, "MYALLY:trait=Rebel");
+        PrependDecisionQueue("SWAPTURN", $gamestate->mainPlayer, "-");
+        PrependDecisionQueue("ELSE", $gamestate->mainPlayer, "-");
+        PrependDecisionQueue("MZOP", $gamestate->mainPlayer, "ATTACK", 1);
+        PrependDecisionQueue("MAYCHOOSEMULTIZONE", $gamestate->mainPlayer, "<-", 1);
+        PrependDecisionQueue("SETDQCONTEXT", $gamestate->mainPlayer, "Choose a unit to attack with");
+        PrependDecisionQueue("MZFILTER", $gamestate->mainPlayer, "status=1");
+        PrependDecisionQueue("MULTIZONEINDICES", $gamestate->mainPlayer, "MYALLY:trait=Rebel");
         return true;
       case "87e8807695"://Leia Organa - Leader Unit
-        SearchCurrentTurnEffects("87e8807695", $mainPlayer, remove:true);
-        PrependDecisionQueue("SWAPTURN", $mainPlayer, "-");
-        PrependDecisionQueue("ELSE", $mainPlayer, "-");
-        PrependDecisionQueue("MZOP", $mainPlayer, "ATTACK", 1);
-        PrependDecisionQueue("MAYCHOOSEMULTIZONE", $mainPlayer, "<-", 1);
-        PrependDecisionQueue("SETDQCONTEXT", $mainPlayer, "Choose a unit to attack with");
-        PrependDecisionQueue("MZFILTER", $mainPlayer, "status=1");
-        PrependDecisionQueue("MULTIZONEINDICES", $mainPlayer, "MYALLY:trait=Rebel");
+        SearchCurrentTurnEffects("87e8807695", $gamestate->mainPlayer, remove:true);
+        PrependDecisionQueue("SWAPTURN", $gamestate->mainPlayer, "-");
+        PrependDecisionQueue("ELSE", $gamestate->mainPlayer, "-");
+        PrependDecisionQueue("MZOP", $gamestate->mainPlayer, "ATTACK", 1);
+        PrependDecisionQueue("MAYCHOOSEMULTIZONE", $gamestate->mainPlayer, "<-", 1);
+        PrependDecisionQueue("SETDQCONTEXT", $gamestate->mainPlayer, "Choose a unit to attack with");
+        PrependDecisionQueue("MZFILTER", $gamestate->mainPlayer, "status=1");
+        PrependDecisionQueue("MULTIZONEINDICES", $gamestate->mainPlayer, "MYALLY:trait=Rebel");
         return true;
       case "9560139036"://Ezra Bridger
-        SearchCurrentTurnEffects("9560139036", $mainPlayer, remove:true);
-        PrependDecisionQueue("MODAL", $mainPlayer, "EZRABRIDGER", 1);
-        PrependDecisionQueue("SHOWMODES", $mainPlayer, $currentTurnEffects[$i], 1);
-        PrependDecisionQueue("MULTICHOOSETEXT", $mainPlayer, "1-Leave,Play,Discard-1");
-        PrependDecisionQueue("SETDQCONTEXT", $mainPlayer, "The top card is <0>; Choose a mode for Ezra Bridger");
-        PrependDecisionQueue("SETDQVAR", $mainPlayer, "0");
-        PrependDecisionQueue("DECKCARDS", $mainPlayer, "0");
+        SearchCurrentTurnEffects("9560139036", $gamestate->mainPlayer, remove:true);
+        PrependDecisionQueue("MODAL", $gamestate->mainPlayer, "EZRABRIDGER", 1);
+        PrependDecisionQueue("SHOWMODES", $gamestate->mainPlayer, $gamestate->currentTurnEffects[$i], 1);
+        PrependDecisionQueue("MULTICHOOSETEXT", $gamestate->mainPlayer, "1-Leave,Play,Discard-1");
+        PrependDecisionQueue("SETDQCONTEXT", $gamestate->mainPlayer, "The top card is <0>; Choose a mode for Ezra Bridger");
+        PrependDecisionQueue("SETDQVAR", $gamestate->mainPlayer, "0");
+        PrependDecisionQueue("DECKCARDS", $gamestate->mainPlayer, "0");
         return true;
       default: break;
     }
@@ -110,7 +110,7 @@ function FinalizeAttackEffects()
 
 function EffectAttackModifier($cardID, $playerID="")
 {
-  global $mainPlayer, $defPlayer;
+  global $gamestate, $defPlayer;
   $params = explode("_", $cardID);
   if(count($params) == 1) {
     $params = explode("-", $cardID);
@@ -137,8 +137,8 @@ function EffectAttackModifier($cardID, $playerID="")
     case "20f21b4948": return -1;//Jyn Erso
     case "9097690846": return 2;//Snowtrooper Lieutenant
     case "9210902604"://Precision Fire
-      $attacker = new Ally(AttackerMZID($mainPlayer), $mainPlayer);
-      return TraitContains($attacker->CardID(), "Trooper", $mainPlayer) ? 2 : 0;
+      $attacker = new Ally(AttackerMZID($gamestate->mainPlayer), $gamestate->mainPlayer);
+      return TraitContains($attacker->CardID(), "Trooper", $gamestate->mainPlayer) ? 2 : 0;
     case "5896817672": if(!$subparam) return 2; else return 0;//Headhunting
     case "8297630396": return 1;//Shoot First
     case "5464125379": return -2;//Strafing Gunship
@@ -162,8 +162,8 @@ function EffectAttackModifier($cardID, $playerID="")
     case "1938453783": return 2;//Armed to the Teeth
     case "6263178121": return 2;//Kylo Ren (Killing the Past)
     case "7578472075"://Let the Wookie Win
-      $attacker = new Ally(AttackerMZID($mainPlayer), $mainPlayer);
-      return TraitContains($attacker->CardID(), "Wookiee", $mainPlayer) ? 2 : 0;
+      $attacker = new Ally(AttackerMZID($gamestate->mainPlayer), $gamestate->mainPlayer);
+      return TraitContains($attacker->CardID(), "Wookiee", $gamestate->mainPlayer) ? 2 : 0;
     case "4663781580"://Swoop Down
       $attackTarget = GetAttackTarget();
       if(!IsAllyAttackTarget()) return 0;
@@ -185,12 +185,12 @@ function EffectHasBlockModifier($cardID)
 
 function CurrentEffectCostModifiers($cardID, $from, $reportMode=false)
 {
-  global $currentTurnEffects, $currentPlayer, $CS_PlayUniqueID;
+  global $gamestate, $CS_PlayUniqueID;
   $costModifier = 0;
-  for($i = count($currentTurnEffects) - CurrentTurnPieces(); $i >= 0; $i -= CurrentTurnPieces()) {
+  for($i = count($gamestate->currentTurnEffects) - CurrentTurnPieces(); $i >= 0; $i -= CurrentTurnPieces()) {
     $remove = false;
-    if($currentTurnEffects[$i + 1] == $currentPlayer) {
-      switch($currentTurnEffects[$i]) {
+    if($gamestate->currentTurnEffects[$i + 1] == $gamestate->currentPlayer) {
+      switch($gamestate->currentTurnEffects[$i]) {
         case "TTFREE"://Free
           $costModifier -= 99;
           $remove = true;
@@ -202,7 +202,7 @@ function CurrentEffectCostModifiers($cardID, $from, $reportMode=false)
           }
           break;
         case "5707383130"://Bendu
-          if(!AspectContains($cardID, "Heroism", $currentPlayer) && !AspectContains($cardID, "Villainy", $currentPlayer)) {
+          if(!AspectContains($cardID, "Heroism", $gamestate->currentPlayer) && !AspectContains($cardID, "Villainy", $gamestate->currentPlayer)) {
             $costModifier -= 2;
             $remove = true;
           }
@@ -220,7 +220,7 @@ function CurrentEffectCostModifiers($cardID, $from, $reportMode=false)
           $remove = true;
           break;
         case "3509161777"://You're My Only Hope
-          $costModifier -= PlayerRemainingHealth($currentPlayer) <= 5 ? 99 : 5;
+          $costModifier -= PlayerRemainingHealth($gamestate->currentPlayer) <= 5 ? 99 : 5;
           $remove = true;
           break;
         case "5494760041"://Galactic Ambition
@@ -253,7 +253,7 @@ function CurrentEffectCostModifiers($cardID, $from, $reportMode=false)
           $remove = true;
           break;
         case "4643489029"://Palpatine's Return
-          $costModifier -= TraitContains($cardID, "Force", $currentPlayer) ? 8 : 6;
+          $costModifier -= TraitContains($cardID, "Force", $gamestate->currentPlayer) ? 8 : 6;
           $remove = true;
           break;
         case "7270736993"://Unrefusable Offer
@@ -270,13 +270,13 @@ function CurrentEffectCostModifiers($cardID, $from, $reportMode=false)
           $remove = true;
           break;
         case "0622803599-3"://Jabba the Hutt
-          if(DefinedTypesContains($cardID, "Unit", $currentPlayer)) {
+          if(DefinedTypesContains($cardID, "Unit", $gamestate->currentPlayer)) {
             $costModifier -= 1;
             $remove = true;
           }
           break;
         case "f928681d36-3"://Jabba the Hutt Leader Unit
-          if(DefinedTypesContains($cardID, "Unit", $currentPlayer)) {
+          if(DefinedTypesContains($cardID, "Unit", $gamestate->currentPlayer)) {
             $costModifier -= 2;
             $remove = true;
           }
@@ -303,11 +303,11 @@ function CurrentEffectCostModifiers($cardID, $from, $reportMode=false)
 
 function CurrentEffectPreventDamagePrevention($player, $type, $damage, $source)
 {
-  global $currentTurnEffects;
-  for($i = count($currentTurnEffects) - CurrentTurnEffectPieces(); $i >= 0; $i -= CurrentTurnEffectPieces()) {
+  global $gamestate;
+  for($i = count($gamestate->currentTurnEffects) - CurrentTurnEffectPieces(); $i >= 0; $i -= CurrentTurnEffectPieces()) {
     $remove = false;
-    if($currentTurnEffects[$i + 1] == $player) {
-      switch ($currentTurnEffects[$i]) {
+    if($gamestate->currentTurnEffects[$i + 1] == $player) {
+      switch ($gamestate->currentTurnEffects[$i]) {
 
         default: break;
       }
@@ -319,12 +319,12 @@ function CurrentEffectPreventDamagePrevention($player, $type, $damage, $source)
 
 function CurrentEffectDamagePrevention($player, $type, $damage, $source, $preventable, $uniqueID=-1)
 {
-  global $currentPlayer, $currentTurnEffects;
-  for($i = count($currentTurnEffects) - CurrentTurnEffectPieces(); $i >= 0 && $damage > 0; $i -= CurrentTurnEffectPieces()) {
-    if($uniqueID != -1 && $currentTurnEffects[$i + 2] != $uniqueID) continue;
+  global $gamestate;
+  for($i = count($gamestate->currentTurnEffects) - CurrentTurnEffectPieces(); $i >= 0 && $damage > 0; $i -= CurrentTurnEffectPieces()) {
+    if($uniqueID != -1 && $gamestate->currentTurnEffects[$i + 2] != $uniqueID) continue;
     $remove = false;
-    if($currentTurnEffects[$i + 1] == $player || $uniqueID != -1) {
-      $effects = explode("-", $currentTurnEffects[$i]);
+    if($gamestate->currentTurnEffects[$i + 1] == $player || $uniqueID != -1) {
+      $effects = explode("-", $gamestate->currentTurnEffects[$i]);
       switch($effects[0]) {
         case "pv4n1n3gyg"://Cleric's Robe
           if($preventable) $damage -= 1;
@@ -340,12 +340,12 @@ function CurrentEffectDamagePrevention($player, $type, $damage, $source, $preven
 
 function CurrentEffectPlayAbility($cardID, $from)
 {
-  global $currentTurnEffects, $currentPlayer, $actionPoints, $CS_LastDynCost;
+  global $gamestate, $CS_LastDynCost;
 
-  for($i = count($currentTurnEffects) - CurrentTurnPieces(); $i >= 0; $i -= CurrentTurnPieces()) {
+  for($i = count($gamestate->currentTurnEffects) - CurrentTurnPieces(); $i >= 0; $i -= CurrentTurnPieces()) {
     $remove = false;
-    if($currentTurnEffects[$i + 1] == $currentPlayer) {
-      switch($currentTurnEffects[$i]) {
+    if($gamestate->currentTurnEffects[$i + 1] == $gamestate->currentPlayer) {
+      switch($gamestate->currentTurnEffects[$i]) {
 
         default:
           break;
@@ -358,12 +358,12 @@ function CurrentEffectPlayAbility($cardID, $from)
 
 function CurrentEffectPlayOrActivateAbility($cardID, $from)
 {
-  global $currentTurnEffects, $currentPlayer;
+  global $gamestate;
 
-  for($i = count($currentTurnEffects) - CurrentTurnPieces(); $i >= 0; $i -= CurrentTurnPieces()) {
+  for($i = count($gamestate->currentTurnEffects) - CurrentTurnPieces(); $i >= 0; $i -= CurrentTurnPieces()) {
     $remove = false;
-    if($currentTurnEffects[$i + 1] == $currentPlayer) {
-      switch($currentTurnEffects[$i]) {
+    if($gamestate->currentTurnEffects[$i + 1] == $gamestate->currentPlayer) {
+      switch($gamestate->currentTurnEffects[$i]) {
 
         default:
           break;
@@ -371,18 +371,18 @@ function CurrentEffectPlayOrActivateAbility($cardID, $from)
       if($remove) RemoveCurrentTurnEffect($i);
     }
   }
-  $currentTurnEffects = array_values($currentTurnEffects); //In case any were removed
+  $gamestate->currentTurnEffects = array_values($gamestate->currentTurnEffects); //In case any were removed
   return false;
 }
 
 function CurrentEffectGrantsNonAttackActionGoAgain($cardID)
 {
-  global $currentTurnEffects, $currentPlayer;
+  global $gamestate;
   $hasGoAgain = false;
-  for($i = count($currentTurnEffects) - CurrentTurnPieces(); $i >= 0; $i -= CurrentTurnPieces()) {
+  for($i = count($gamestate->currentTurnEffects) - CurrentTurnPieces(); $i >= 0; $i -= CurrentTurnPieces()) {
     $remove = false;
-    if($currentTurnEffects[$i + 1] == $currentPlayer) {
-      switch($currentTurnEffects[$i]) {
+    if($gamestate->currentTurnEffects[$i + 1] == $gamestate->currentPlayer) {
+      switch($gamestate->currentTurnEffects[$i]) {
 
         default:
           break;
@@ -393,99 +393,27 @@ function CurrentEffectGrantsNonAttackActionGoAgain($cardID)
   return $hasGoAgain;
 }
 
-function CurrentEffectGrantsGoAgain()
-{
-  global $currentTurnEffects, $mainPlayer, $attackState;
-  for($i = 0; $i < count($currentTurnEffects); $i += CurrentTurnEffectPieces()) {
-    if($currentTurnEffects[$i + 1] == $mainPlayer && IsCombatEffectActive($currentTurnEffects[$i]) && !IsCombatEffectLimited($i)) {
-      switch ($currentTurnEffects[$i]) {
-
-        default:
-          break;
-      }
-    }
-  }
-  return false;
-}
-
-function CurrentEffectPreventsGoAgain()
-{
-  global $currentTurnEffects, $mainPlayer;
-  for($i = 0; $i < count($currentTurnEffects); $i += CurrentTurnEffectPieces()) {
-    if($currentTurnEffects[$i + 1] == $mainPlayer) {
-      switch($currentTurnEffects[$i]) {
-        default: break;
-      }
-    }
-  }
-  return false;
-}
-
-function CurrentEffectPreventsDefenseReaction($from)
-{
-  global $currentTurnEffects, $currentPlayer;
-  $reactionPrevented = false;
-  for($i = 0; $i < count($currentTurnEffects); $i += CurrentTurnEffectPieces()) {
-    if($currentTurnEffects[$i + 1] == $currentPlayer) {
-      switch($currentTurnEffects[$i]) {
-
-        default:
-          break;
-      }
-    }
-  }
-  return $reactionPrevented;
-}
-
-function CurrentEffectPreventsDraw($player, $isMainPhase)
-{
-  global $currentTurnEffects;
-  for($i = 0; $i < count($currentTurnEffects); $i += CurrentTurnEffectPieces()) {
-    if($currentTurnEffects[$i + 1] == $player) {
-      switch ($currentTurnEffects[$i]) {
-        default: break;
-      }
-    }
-  }
-  return false;
-}
-
-function CurrentEffectIntellectModifier()
-{
-  global $currentTurnEffects, $mainPlayer;
-  $intellectModifier = 0;
-  for($i = count($currentTurnEffects) - CurrentTurnEffectPieces(); $i >= 0; $i -= CurrentTurnEffectPieces()) {
-    if($currentTurnEffects[$i + 1] == $mainPlayer) {
-      switch($currentTurnEffects[$i]) {
-
-        default: break;
-      }
-    }
-  }
-  return $intellectModifier;
-}
-
 function CurrentEffectEndTurnAbilities()
 {
-  global $currentTurnEffects, $mainPlayer;
-  for($i = count($currentTurnEffects) - CurrentTurnPieces(); $i >= 0; $i -= CurrentTurnPieces()) {
+  global $gamestate;
+  for($i = count($gamestate->currentTurnEffects) - CurrentTurnPieces(); $i >= 0; $i -= CurrentTurnPieces()) {
     $remove = false;
-    $params = explode("_", $currentTurnEffects[$i]);
+    $params = explode("_", $gamestate->currentTurnEffects[$i]);
     $cardID = $params[0];
     if(count($params) > 1) $subparam = $params[1];
-    if(SearchCurrentTurnEffects($cardID . "-UNDER", $currentTurnEffects[$i + 1])) {
-      AddNextTurnEffect($currentTurnEffects[$i], $currentTurnEffects[$i + 1]);
+    if(SearchCurrentTurnEffects($cardID . "-UNDER", $gamestate->currentTurnEffects[$i + 1])) {
+      AddNextTurnEffect($gamestate->currentTurnEffects[$i], $gamestate->currentTurnEffects[$i + 1]);
     }
     switch($cardID) {
       case "3426168686-2"://Sneak Attack
       case "7270736993-2"://Unrefusable Offer
-        $ally = new Ally("MYALLY-" . SearchAlliesForUniqueID($currentTurnEffects[$i+2], $currentTurnEffects[$i+1]), $currentTurnEffects[$i+1]);
+        $ally = new Ally("MYALLY-" . SearchAlliesForUniqueID($gamestate->currentTurnEffects[$i+2], $gamestate->currentTurnEffects[$i+1]), $gamestate->currentTurnEffects[$i+1]);
         $ally->Destroy();
         break;
       case "1626462639"://Change of Heart
-        $index = SearchAlliesForUniqueID($currentTurnEffects[$i+2], $currentTurnEffects[$i+1]);
+        $index = SearchAlliesForUniqueID($gamestate->currentTurnEffects[$i+2], $gamestate->currentTurnEffects[$i+1]);
         if($index > -1) {
-          $ally = new Ally("MYALLY-" . $index, $currentTurnEffects[$i+1]);
+          $ally = new Ally("MYALLY-" . $index, $gamestate->currentTurnEffects[$i+1]);
           $owner = $ally->Owner();
           WriteLog("Change of Heart unit reverted control of " . CardLink($ally->CardID(), $ally->CardID()) . "back to player $owner");
           AddDecisionQueue("PASSPARAMETER", $owner, "THEIRALLY-" . $index, 1);
@@ -493,21 +421,21 @@ function CurrentEffectEndTurnAbilities()
         }
         break;
       case "5696041568-2"://Triple Dark Raid
-        $allyId = SearchAlliesForUniqueID($currentTurnEffects[$i+2], $currentTurnEffects[$i+1]);
+        $allyId = SearchAlliesForUniqueID($gamestate->currentTurnEffects[$i+2], $gamestate->currentTurnEffects[$i+1]);
         if($allyId > -1) {
-          $ally = new Ally("MYALLY-" . $allyId, $currentTurnEffects[$i+1]);
-          MZBounce($currentTurnEffects[$i+1], "MYALLY-" . $ally->Index());
+          $ally = new Ally("MYALLY-" . $allyId, $gamestate->currentTurnEffects[$i+1]);
+          MZBounce($gamestate->currentTurnEffects[$i+1], "MYALLY-" . $ally->Index());
         }
         break;
       case "1910812527":
-        DealDamageAsync($currentTurnEffects[$i+1], 999999);
+        DealDamageAsync($gamestate->currentTurnEffects[$i+1], 999999);
         break;
       case "6117103324"://Jetpack
-        $ally = new Ally("MYALLY-" . SearchAlliesForUniqueID($currentTurnEffects[$i+2], $currentTurnEffects[$i+1]), $currentTurnEffects[$i+1]);
+        $ally = new Ally("MYALLY-" . SearchAlliesForUniqueID($gamestate->currentTurnEffects[$i+2], $gamestate->currentTurnEffects[$i+1]), $gamestate->currentTurnEffects[$i+1]);
         $ally->DefeatUpgrade("8752877738");
         break;
       case "4002861992"://DJ (Blatant Thief)
-        AddNextTurnEffect($currentTurnEffects[$i], $currentTurnEffects[$i + 1]);
+        AddNextTurnEffect($gamestate->currentTurnEffects[$i], $gamestate->currentTurnEffects[$i + 1]);
         break;
       default: break;
     }
@@ -518,18 +446,18 @@ function CurrentEffectEndTurnAbilities()
 
 function CurrentEffectStartRegroupAbilities()
 {
-  global $currentTurnEffects, $mainPlayer;
-  for($i = count($currentTurnEffects) - CurrentTurnPieces(); $i >= 0; $i -= CurrentTurnPieces()) {
+  global $gamestate;
+  for($i = count($gamestate->currentTurnEffects) - CurrentTurnPieces(); $i >= 0; $i -= CurrentTurnPieces()) {
     $remove = false;
-    $params = explode("_", $currentTurnEffects[$i]);
+    $params = explode("_", $gamestate->currentTurnEffects[$i]);
     $cardID = $params[0];
     if(count($params) > 1) $subparam = $params[1];
-    if(SearchCurrentTurnEffects($cardID . "-UNDER", $currentTurnEffects[$i + 1])) {
-      AddNextTurnEffect($currentTurnEffects[$i], $currentTurnEffects[$i + 1]);
+    if(SearchCurrentTurnEffects($cardID . "-UNDER", $gamestate->currentTurnEffects[$i + 1])) {
+      AddNextTurnEffect($gamestate->currentTurnEffects[$i], $gamestate->currentTurnEffects[$i + 1]);
     }
     switch($cardID) {
       case "2522489681"://Zorii Bliss
-        PummelHit($currentTurnEffects[$i+1]);
+        PummelHit($gamestate->currentTurnEffects[$i+1]);
         break;
       default: break;
     }
@@ -539,19 +467,19 @@ function CurrentEffectStartRegroupAbilities()
 
 function CurrentEffectStartTurnAbilities()
 {
-  global $currentTurnEffects, $mainPlayer;
-  for($i = count($currentTurnEffects) - CurrentTurnPieces(); $i >= 0; $i -= CurrentTurnPieces()) {
+  global $gamestate;
+  for($i = count($gamestate->currentTurnEffects) - CurrentTurnPieces(); $i >= 0; $i -= CurrentTurnPieces()) {
     $remove = false;
-    $cardID = substr($currentTurnEffects[$i], 0, 6);
-    if(SearchCurrentTurnEffects($cardID . "-UNDER", $currentTurnEffects[$i + 1])) {
-      AddNextTurnEffect($currentTurnEffects[$i], $currentTurnEffects[$i + 1]);
+    $cardID = substr($gamestate->currentTurnEffects[$i], 0, 6);
+    if(SearchCurrentTurnEffects($cardID . "-UNDER", $gamestate->currentTurnEffects[$i + 1])) {
+      AddNextTurnEffect($gamestate->currentTurnEffects[$i], $gamestate->currentTurnEffects[$i + 1]);
     }
-    switch($currentTurnEffects[$i]) {
+    switch($gamestate->currentTurnEffects[$i]) {
       case "5954056864": case "5e90bd91b0"://Han Solo
-        MZChooseAndDestroy($currentTurnEffects[$i+1], "MYRESOURCES", context:"Choose a resource to destroy");
+        MZChooseAndDestroy($gamestate->currentTurnEffects[$i+1], "MYRESOURCES", context:"Choose a resource to destroy");
         break;
       case "8800836530"://No Good To Me Dead
-        $ally = new Ally("MYALLY-" . SearchAlliesForUniqueID($currentTurnEffects[$i+2], $currentTurnEffects[$i+1]), $currentTurnEffects[$i+1]);
+        $ally = new Ally("MYALLY-" . SearchAlliesForUniqueID($gamestate->currentTurnEffects[$i+2], $gamestate->currentTurnEffects[$i+1]), $gamestate->currentTurnEffects[$i+1]);
         $ally->Exhaust();
         $remove = true;
         break;
@@ -563,7 +491,7 @@ function CurrentEffectStartTurnAbilities()
 
 function IsCombatEffectActive($cardID)
 {
-  global $currentPlayer;
+  global $gamestate;
   if(!AttackIsOngoing()) return;
   $effectArr = explode("-", $cardID);
   $cardID = $effectArr[0];
@@ -604,7 +532,7 @@ function IsCombatEffectActive($cardID)
 
 function IsCombatEffectPersistent($cardID)
 {
-  global $currentPlayer;
+  global $gamestate;
   $effectArr = explode(",", $cardID);
   switch($cardID) {
     case "2587711125": return true;//Disarm
@@ -618,7 +546,7 @@ function IsCombatEffectPersistent($cardID)
 
 function IsEffectPersistent($cardID)
 {
-  global $currentPlayer;
+  global $gamestate;
   $effectArr = explode(",", $cardID);
   switch($cardID) {
     case "7dedg616r0": return true;//Freydis, Master Tactician
@@ -629,11 +557,11 @@ function IsEffectPersistent($cardID)
 
 function BeginEndPhaseEffects()
 {
-  global $currentTurnEffects, $mainPlayer, $EffectContext;
-  for($i = 0; $i < count($currentTurnEffects); $i += CurrentTurnPieces()) {
-    $EffectContext = $currentTurnEffects[$i];
-    if(IsEffectPersistent($EffectContext)) AddNextTurnEffect($EffectContext, $currentTurnEffects[$i+1]);
-    switch($currentTurnEffects[$i]) {
+  global $gamestate;
+  for($i = 0; $i < count($gamestate->currentTurnEffects); $i += CurrentTurnPieces()) {
+    $gamestate->EffectContext = $gamestate->currentTurnEffects[$i];
+    if(IsEffectPersistent($gamestate->EffectContext)) AddNextTurnEffect($gamestate->EffectContext, $gamestate->currentTurnEffects[$i+1]);
+    switch($gamestate->currentTurnEffects[$i]) {
       default:
         break;
     }
@@ -642,13 +570,9 @@ function BeginEndPhaseEffects()
 
 function BeginEndPhaseEffectTriggers()
 {
-  global $currentTurnEffects, $mainPlayer;
-  for($i = 0; $i < count($currentTurnEffects); $i += CurrentTurnPieces()) {
-    switch($currentTurnEffects[$i]) {
-      case "blq7qXGvWH":
-        DiscardHand($mainPlayer);
-        WriteLog("Arcane Disposition discarded your hand");
-        break;
+  global $gamestate;
+  for($i = 0; $i < count($gamestate->currentTurnEffects); $i += CurrentTurnPieces()) {
+    switch($gamestate->currentTurnEffects[$i]) {
       default: break;
     }
   }
@@ -656,11 +580,11 @@ function BeginEndPhaseEffectTriggers()
 
 function ActivateAbilityEffects()
 {
-  global $currentPlayer, $currentTurnEffects;
-  for($i = count($currentTurnEffects) - CurrentTurnPieces(); $i >= 0; $i -= CurrentTurnPieces()) {
+  global $gamestate;
+  for($i = count($gamestate->currentTurnEffects) - CurrentTurnPieces(); $i >= 0; $i -= CurrentTurnPieces()) {
     $remove = false;
-    if($currentTurnEffects[$i + 1] == $currentPlayer) {
-      switch($currentTurnEffects[$i]) {
+    if($gamestate->currentTurnEffects[$i + 1] == $gamestate->currentPlayer) {
+      switch($gamestate->currentTurnEffects[$i]) {
 
         default:
           break;
@@ -668,7 +592,7 @@ function ActivateAbilityEffects()
     }
     if($remove) RemoveCurrentTurnEffect($i);
   }
-  $currentTurnEffects = array_values($currentTurnEffects);
+  $gamestate->currentTurnEffects = array_values($gamestate->currentTurnEffects);
 }
 
 function CurrentEffectNameModifier($effectID, $effectParameter)
@@ -684,12 +608,12 @@ function CurrentEffectNameModifier($effectID, $effectParameter)
 
 function CurrentEffectAllyEntersPlay($player, $index)
 {
-  global $currentTurnEffects;
+  global $gamestate;
   $allies = &GetAllies($player);
-  for($i = count($currentTurnEffects) - CurrentTurnPieces(); $i >= 0; $i -= CurrentTurnPieces()) {
+  for($i = count($gamestate->currentTurnEffects) - CurrentTurnPieces(); $i >= 0; $i -= CurrentTurnPieces()) {
     $remove = false;
-    if($currentTurnEffects[$i + 1] == $player) {
-      switch($currentTurnEffects[$i]) {
+    if($gamestate->currentTurnEffects[$i + 1] == $player) {
+      switch($gamestate->currentTurnEffects[$i]) {
         case "7642980906"://Stolen Landspeeder
           $remove = true;
           $ally = new Ally("MYALLY-" . $index, $player);
@@ -701,7 +625,7 @@ function CurrentEffectAllyEntersPlay($player, $index)
     }
     if($remove) RemoveCurrentTurnEffect($i);
   }
-  $currentTurnEffects = array_values($currentTurnEffects);
+  $gamestate->currentTurnEffects = array_values($gamestate->currentTurnEffects);
 }
 
 ?>

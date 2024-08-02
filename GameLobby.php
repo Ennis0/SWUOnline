@@ -41,7 +41,7 @@ ob_start();
 include "MenuFiles/ParseGamefile.php";
 ob_end_clean();
 
-$targetAuth = ($playerID == 1 ? $p1Key : $p2Key);
+$targetAuth = ($playerID == 1 ? $gamestate->p1Key : $gamestate->p2Key);
 if (!isset($authKey) || $authKey != $targetAuth) {
   echo ("Invalid Auth Key");
   exit;
@@ -51,7 +51,7 @@ $yourName = ($playerID == 1 ? $p1uid : $p2uid);
 $theirName = ($playerID == 1 ? $p2uid : $p1uid);
 
 if ($gameStatus == $MGS_GameStarted) {
-  $authKey = ($playerID == 1 ? $p1Key : $p2Key);
+  $authKey = ($playerID == 1 ? $gamestate->p1Key : $gamestate->p2Key);
   if (isset($gameUIPath))
     header("Location: " . $gameUIPath . "?gameName=$gameName&playerID=$playerID");
   else

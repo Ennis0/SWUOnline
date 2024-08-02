@@ -10,9 +10,9 @@ class Ally {
 
   // Constructor
   function __construct($MZIndex, $player="") {
-    global $currentPlayer;
+    global $gamestate;
     $mzArr = explode("-", $MZIndex);
-    if($player == "") $player = ($mzArr[0] == "MYALLY" ? $currentPlayer : ($currentPlayer == 1 ? 2 : 1));
+    if($player == "") $player = ($mzArr[0] == "MYALLY" ? $gamestate->currentPlayer : ($gamestate->currentPlayer == 1 ? 2 : 1));
     if($mzArr[1] == "") {
       for($i=0; $i<AllyPieces(); ++$i) $this->allies[] = 9999;
       $this->index = -1;
@@ -58,7 +58,7 @@ class Ally {
   }
 
   function TurnsInPlay() {
-    global $currentRound;
+    global $gamestate;
     if(IsLeader($this->CardID(), $this->PlayerID())) return $currentRound - 1;
     return $this->allies[$this->index+12];
   }
@@ -200,7 +200,7 @@ class Ally {
   }
 
   function CurrentPower() {
-    global $currentTurnEffects;
+    global $gamestate;
     $power = AttackValue($this->CardID()) + $this->allies[$this->index+7];
     $power += AttackModifier($this->CardID(), $this->playerID, $this->index);
     $upgrades = $this->GetUpgrades();
@@ -232,9 +232,9 @@ class Ally {
           if(TraitContains($this->CardID(), "Vehicle", $this->PlayerID())) $power += 1;
           break;
         case "4484318969"://Moff Gideon Leader
-          global $mainPlayer;
-          //As defined on NetworkingLibraries.GetTargetOfAttack, $mainPlayer is always the attacker
-          if(CardCost($this->CardID()) <= 3 && $mainPlayer == $this->playerID && AttackerIndex() == $this->index && IsAllyAttackTarget()) {
+          global $gamestate;
+          //As defined on NetworkingLibraries.GetTargetOfAttack, $gamestate->mainPlayer is always the attacker
+          if(CardCost($this->CardID()) <= 3 && $gamestate->mainPlayer == $this->playerID && AttackerIndex() == $this->index && IsAllyAttackTarget()) {
             $power += 1;
           }
           break;
@@ -273,10 +273,10 @@ class Ally {
       }
     }
     //Current effect buffs
-    for($i=0; $i<count($currentTurnEffects); $i+=CurrentTurnEffectPieces()) {
-      if($currentTurnEffects[$i+1] != $this->playerID) continue;
-      if($currentTurnEffects[$i+2] != -1 && $currentTurnEffects[$i+2] != $this->UniqueID()) continue;
-      $power += EffectAttackModifier($currentTurnEffects[$i], $this->PlayerID());
+    for($i=0; $i<count($gamestate->currentTurnEffects); $i+=CurrentTurnEffectPieces()) {
+      if($gamestate->currentTurnEffects[$i+1] != $this->playerID) continue;
+      if($gamestate->currentTurnEffects[$i+2] != -1 && $gamestate->currentTurnEffects[$i+2] != $this->UniqueID()) continue;
+      $power += EffectAttackModifier($gamestate->currentTurnEffects[$i], $this->PlayerID());
     }
     if($power < 0) $power = 0;
     return $power;
@@ -452,11 +452,11 @@ class Ally {
   }
 
   function LostAbilities() {
-    global $currentTurnEffects;
-    for($i=0; $i<count($currentTurnEffects); $i+=CurrentTurnEffectPieces()) {
-      if($currentTurnEffects[$i+1] != $this->PlayerID()) continue;
-      if($currentTurnEffects[$i+2] != -1 && $currentTurnEffects[$i+2] != $this->UniqueID()) continue;
-      if($currentTurnEffects[$i] == "2639435822") return true;
+    global $gamestate;
+    for($i=0; $i<count($gamestate->currentTurnEffects); $i+=CurrentTurnEffectPieces()) {
+      if($gamestate->currentTurnEffects[$i+1] != $this->PlayerID()) continue;
+      if($gamestate->currentTurnEffects[$i+2] != -1 && $gamestate->currentTurnEffects[$i+2] != $this->UniqueID()) continue;
+      if($gamestate->currentTurnEffects[$i] == "2639435822") return true;
     }
     $upgrades = $this->GetUpgrades();
     for($i=0; $i<count($upgrades); ++$i) {

@@ -229,7 +229,7 @@ if ($matchup == "") {
     $p2ContentCreatorID = ($_SESSION["patreonEnum"] ?? "");
   }
 
-  if ($playerID == 2) $p2Key = hash("sha256", rand() . rand() . rand());
+  if ($playerID == 2) $gamestate->p2Key = hash("sha256", rand() . rand() . rand());
 
   WriteGameFile();
   SetCachePiece($gameName, $playerID + 1, strval(round(microtime(true) * 1000)));
@@ -238,15 +238,15 @@ if ($matchup == "") {
   SetCachePiece($gameName, 14, $gameStatus);
   GamestateUpdated($gameName);
 
-  //$authKey = ($playerID == 1 ? $p1Key : $p2Key);
+  //$authKey = ($playerID == 1 ? $gamestate->p1Key : $gamestate->p2Key);
   //$_SESSION["authKey"] = $authKey;
   $domain = (!empty(getenv("DOMAIN")) ? getenv("DOMAIN") : "karabast.net");
   if ($playerID == 1) {
-    $_SESSION["p1AuthKey"] = $p1Key;
-    setcookie("lastAuthKey", $p1Key, time() + 86400, "/", $domain);
+    $_SESSION["p1AuthKey"] = $gamestate->p1Key;
+    setcookie("lastAuthKey", $gamestate->p1Key, time() + 86400, "/", $domain);
   } else if ($playerID == 2) {
-    $_SESSION["p2AuthKey"] = $p2Key;
-    setcookie("lastAuthKey", $p2Key, time() + 86400, "/", $domain);
+    $_SESSION["p2AuthKey"] = $gamestate->p2Key;
+    setcookie("lastAuthKey", $gamestate->p2Key, time() + 86400, "/", $domain);
   }
 }
 
